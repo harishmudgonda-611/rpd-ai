@@ -1,0 +1,31 @@
+name: RPD Day 1 CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Test Module 01
+        run: npm ci && npm test
+      - name: Test Module 02
+        working-directory: modules/ai-fashion-model
+        run: npm install && npm test
+      - name: Test Module 03
+        working-directory: modules/variant-colour-intelligence
+        run: npm install && npm test
+      - name: Test Module 04
+        working-directory: modules/content-intelligence
+        run: npm install && npx tsx --test *.test.ts
+      - name: Test Module 05
+        working-directory: modules/carousel-generator
+        run: npm install && npm test
+      - name: Integration contract check
+        run: node scripts/day01-integration-check.mjs
