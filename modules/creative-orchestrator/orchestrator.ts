@@ -1,5 +1,6 @@
 import { generateContent } from '../content-intelligence/generator.js';
 import { selectBestModelAsset } from '../ai-fashion-model/asset-selector.js';
+import { selectTemplate } from '../template-intelligence/selector.js';
 import type {
   CreativeConcept,
   CreativeExecutionPlan,
@@ -27,24 +28,30 @@ function chooseAngle(
 
 function chooseTemplate(
   request: CreativeOrchestratorRequest,
+  angle: CreativeConcept['intent']['angle'],
+  objective: CreativeConcept['intent']['objective'],
+  selectedModel: ReturnType<typeof selectBestModelAsset>,
 ): CreativeConcept['intent']['template'] {
   if (request.template) return request.template;
 
-  const angle = chooseAngle(request);
+  const category = value(request.product.category);
 
-  if (angle === 'price' || angle === 'value') {
-    return 'rpd-pink-deal';
-  }
+  const hasPriceEvidence =
+    value(request.product.price) != null &&
+    value(request.product.mrp) != null &&
+    Number(value(request.product.mrp)) > Number(value(request.product.price));
 
-  if (angle === 'occasion') {
-    return 'rpd-lookbook';
-  }
+  const selection = selectTemplate({
+    angle,
+    objective,
+    category,
+    hasPriceEvidence,
+    hasProductImages: request.product.images.length > 0,
+    hasModelAsset: selectedModel.asset != null,
+    imageCount: request.product.images.length,
+  });
 
-  if (angle === 'trend') {
-    return 'rpd-colour-grid';
-  }
-
-  return 'rpd-editorial';
+  return selection.template.id as CreativeConcept['intent']['template'];
 }
 
 function chooseCTA(
@@ -55,14 +62,14 @@ function chooseCTA(
 
 function createConcept(
   request: CreativeOrchestratorRequest,
+  selectedModel: ReturnType<typeof selectBestModelAsset>,
 ): CreativeConcept {
   const productTitle = value(request.product.title) ?? 'this fashion find';
   const category = value(request.product.category) ?? 'fashion';
   const angle = chooseAngle(request);
   const cta = chooseCTA(request);
-  const template = chooseTemplate(request);
-
   const objective = request.objective ?? 'conversion';
+  const template = chooseTemplate(request, angle, objective, selectedModel);
   const audience = request.audience ?? 'Indian fashion shoppers';
 
   const hook =
@@ -102,12 +109,19 @@ function createConcept(
 export function planCreative(
   request: CreativeOrchestratorRequest,
 ): CreativeExecutionPlan {
-  const concept = createConcept(request);
+  const preliminaryAssetRequest = {
+    category: value(request.product.category),
+    preferredPose: 'front' as const,
+    preferredFraming: 'full-body' as const,
+    requiredBackground: 'studio' as const,
+  };
 
   const selectedModel = selectBestModelAsset(
     request.modelAssets ?? [],
-    concept.assetRequest,
+    preliminaryAssetRequest,
   );
+
+  const concept = createConcept(request, selectedModel);
 
   const p = request.product;
 
@@ -143,7 +157,7 @@ export function planCreative(
     'validate product evidence',
     'select creative angle',
     'select CTA',
-    'select carousel template',
+    'select intelligent carousel template',
     'select compatible model asset',
     'generate structured content',
     'pass execution package to rendering pipeline',
