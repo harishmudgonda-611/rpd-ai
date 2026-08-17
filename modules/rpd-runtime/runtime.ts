@@ -29,13 +29,23 @@ export async function generateRPDFromUrl(
 
   const assets = analyzeProductAssets(product.images);
 
+  // Only pass trusted product assets downstream. The original extracted
+  // product remains untouched for provenance/auditability.
+  const generationProduct = {
+    ...product,
+    images: assets.productImages.map((asset) => ({
+      url: asset.url,
+      source: 'product-asset-intelligence',
+    })),
+  };
+
   const creative = planCreative({
-    product,
+    product: generationProduct,
     modelAssets: request.modelAssets,
   });
 
   const generation = generateRPD({
-    product,
+    product: generationProduct,
     modelAssets: request.modelAssets,
     modelSelection: creative.concept.assetRequest,
     template: creative.concept.intent.template,
