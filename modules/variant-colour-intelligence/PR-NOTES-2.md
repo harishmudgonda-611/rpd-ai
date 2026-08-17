@@ -1,0 +1,1 @@
+Review scope: variant normalization, colour normalization, deduplication, provenance/confidence, visual evidence merge, and deterministic tests. No paid APIs or external services are required.
