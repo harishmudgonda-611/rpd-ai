@@ -1,0 +1,1 @@
+Module 03 summary: explicit variant/colour normalization, alias handling, deduplication, provenance/confidence, visual colour evidence merge, deterministic tests. Free-only and no paid APIs.
