@@ -1,0 +1,1 @@
+Implementation ready. Required local verification: npx tsx --test modules/variant-colour-intelligence/analyzer.test.ts
