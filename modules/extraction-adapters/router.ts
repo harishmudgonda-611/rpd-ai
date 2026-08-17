@@ -5,6 +5,7 @@ import type {
 } from './types.js';
 import { httpExtractionAdapter } from './http-adapter.js';
 import { browserExtractionAdapter } from './browser-adapter.js';
+import { analyzeExtraction } from '../extraction-intelligence/analyzer.js';
 
 const adapters: ExtractionAdapter[] = [
   httpExtractionAdapter,
@@ -26,15 +27,23 @@ export async function extractWithAdapters(
     attempts.push(attempt);
 
     if (attempt.success && attempt.product) {
-      return {
-        product: attempt.product,
-        method: attempt.method,
-        attempts,
-        warnings: [
-          ...warnings,
-          ...attempt.product.extraction.warnings,
-        ],
-      };
+      const analysis = analyzeExtraction(attempt.product);
+
+      if (analysis.quality.trustworthy) {
+        return {
+          product: attempt.product,
+          method: attempt.method,
+          attempts,
+          warnings: [
+            ...warnings,
+            ...attempt.product.extraction.warnings,
+          ],
+        };
+      }
+
+      warnings.push(
+        `${adapter.name}: product evidence did not meet trust threshold.`,
+      );
     }
 
     if (attempt.blocked) {

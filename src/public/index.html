@@ -154,6 +154,14 @@
           Attempts
           <b id="extractionAttempts">—</b>
         </div>
+        <div class="stat">
+          Platform
+          <b id="platform">—</b>
+        </div>
+        <div class="stat">
+          Quality
+          <b id="extractionQuality">—</b>
+        </div>
       </div>
       <p id="extractionStatus">—</p>
     </div>
@@ -266,6 +274,17 @@ function render(result) {
     extraction.warnings.length
       ? extraction.warnings.join(' • ')
       : 'Product extracted successfully';
+
+  const extractionIntelligence =
+    result.extractionIntelligence;
+
+  $('platform').textContent =
+    extractionIntelligence.platform;
+
+  $('extractionQuality').textContent =
+    `${Math.round(
+      extractionIntelligence.quality.score * 100
+    )}%`;
 
   const assets = result.assets;
 
