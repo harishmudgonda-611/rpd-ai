@@ -2,6 +2,7 @@ import type {
   ExtractionAdapter,
   ExtractionAttempt,
 } from './types.js';
+import { extractWithBrowser } from './browser-extractor.js';
 
 /**
  * Browser extraction contract.
@@ -23,13 +24,7 @@ export const browserExtractionAdapter: ExtractionAdapter = {
     }
   },
 
-  async extract(_url: string): Promise<ExtractionAttempt> {
-    return {
-      method: 'browser',
-      success: false,
-      blocked: false,
-      product: null,
-      error: 'Browser extraction engine is not configured.',
-    };
+  async extract(url: string): Promise<ExtractionAttempt> {
+    return extractWithBrowser(url);
   },
 };
