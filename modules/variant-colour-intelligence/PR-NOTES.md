@@ -1,0 +1,1 @@
+Module 03 is ready for review. Core variant and colour normalization is deterministic, free-only, and does not invent marketplace availability. Image colour analysis remains a provider-neutral enrichment adapter.
