@@ -205,6 +205,29 @@
       <div id="distribution"></div>
     </div>
 
+
+    <div class="card">
+      <h2>Production Pipeline</h2>
+      <div class="grid">
+        <div class="stat">
+          Status
+          <b id="productionStatus">—</b>
+        </div>
+        <div class="stat">
+          Format
+          <b id="productionFormat">—</b>
+        </div>
+        <div class="stat">
+          Assets
+          <b id="productionAssets">—</b>
+        </div>
+        <div class="stat">
+          Artifacts
+          <b id="productionArtifacts">—</b>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <h2>Warnings</h2>
       <div id="warnings">None</div>
@@ -320,6 +343,25 @@ function render(result) {
         <small>${escapeHtml(item.metadata.title)}</small>
       </div>
     `).join('');
+
+
+  if (result.production) {
+    $('productionStatus').textContent =
+      result.production.status;
+
+    $('productionFormat').textContent =
+      result.production.render.aspectRatio +
+      ' • ' +
+      result.production.render.width +
+      'x' +
+      result.production.render.height;
+
+    $('productionAssets').textContent =
+      result.production.render.assets.length;
+
+    $('productionArtifacts').textContent =
+      result.production.artifacts.length;
+  }
 
   $('warnings').textContent =
     result.warnings.length

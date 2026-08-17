@@ -4,6 +4,7 @@ import { generateRPD } from '../rpd-orchestrator/orchestrator.js';
 import { optimizeDistribution } from '../distribution-intelligence/optimizer.js';
 import { analyzeProductAssets } from '../product-asset-intelligence/analyzer.js';
 import { analyzeExtraction } from '../extraction-intelligence/analyzer.js';
+import { createProductionManifest } from '../rpd-production/pipeline.js';
 import type {
   RPDGenerateRequest,
   RPDGenerateResult,
@@ -71,6 +72,15 @@ export async function generateRPDFromUrl(
     }),
   );
 
+  const production = createProductionManifest({
+    product: generationProduct,
+    platform: extractionIntelligence.platform,
+    template: creative.concept.intent.template,
+    // ModelAsset currently exposes registry metadata, not a direct image URL.
+    // Do not fabricate an image URL; the render planner can operate without it.
+    modelImage: null,
+  });
+
   const warnings = [
     ...extraction.warnings,
     ...extractionIntelligence.quality.reasons,
@@ -85,6 +95,7 @@ export async function generateRPDFromUrl(
     extraction,
     extractionIntelligence,
     assets,
+    production,
     creative,
     generation,
     distribution,
