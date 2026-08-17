@@ -1,0 +1,1 @@
+RPD Module 05 final summary: five original templates, 1080x1350 output, 4-8 slides, local export adapter, product/model/colour inputs, validation and tests.
