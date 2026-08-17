@@ -1,0 +1,1 @@
+Module 05 documentation companion. Five original templates, 1080x1350 output, 4-8 slides, local rendering only.
