@@ -1,0 +1,1 @@
+Module 05 branch contains the carousel generator implementation. Verify locally before merge.
