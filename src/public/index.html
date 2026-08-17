@@ -144,6 +144,21 @@
     </div>
 
     <div class="card">
+      <h2>Extraction</h2>
+      <div class="grid">
+        <div class="stat">
+          Method
+          <b id="extractionMethod">—</b>
+        </div>
+        <div class="stat">
+          Attempts
+          <b id="extractionAttempts">—</b>
+        </div>
+      </div>
+      <p id="extractionStatus">—</p>
+    </div>
+
+    <div class="card">
       <h2>Product Assets</h2>
       <div class="grid">
         <div class="stat">
@@ -238,6 +253,19 @@ function render(result) {
 
   $('creativeHook').textContent =
     creative.concept.hook || '—';
+
+  const extraction = result.extraction;
+
+  $('extractionMethod').textContent =
+    extraction.method;
+
+  $('extractionAttempts').textContent =
+    extraction.attempts.length;
+
+  $('extractionStatus').textContent =
+    extraction.warnings.length
+      ? extraction.warnings.join(' • ')
+      : 'Product extracted successfully';
 
   const assets = result.assets;
 

@@ -1,4 +1,4 @@
-import { fetchAndExtractProduct } from '../../src/extractor.js';
+import { extractWithAdapters } from '../extraction-adapters/router.js';
 import { planCreative } from '../creative-orchestrator/orchestrator.js';
 import { generateRPD } from '../rpd-orchestrator/orchestrator.js';
 import { optimizeDistribution } from '../distribution-intelligence/optimizer.js';
@@ -22,7 +22,8 @@ export async function generateRPDFromUrl(
     throw new Error('url is required');
   }
 
-  const product = await fetchAndExtractProduct(request.url.trim());
+  const extraction = await extractWithAdapters(request.url.trim());
+  const product = extraction.product;
 
   const assets = analyzeProductAssets(product.images);
 
@@ -59,6 +60,7 @@ export async function generateRPDFromUrl(
   );
 
   const warnings = [
+    ...extraction.warnings,
     ...assets.warnings,
     ...creative.warnings,
     ...generation.warnings,
@@ -67,6 +69,7 @@ export async function generateRPDFromUrl(
 
   return {
     product,
+    extraction,
     assets,
     creative,
     generation,
