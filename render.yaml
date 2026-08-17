@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: rpd-browser-worker
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: main
+    dockerfilePath: ./browser-worker/Dockerfile
+    dockerContext: ./browser-worker
+    autoDeployTrigger: commit
