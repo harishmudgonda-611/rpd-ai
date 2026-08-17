@@ -34,7 +34,7 @@ function platformCTA(
 
 function hashtags(request: DistributionRequest): string[] {
   const category =
-    value(request.creative.product.category)?.toLowerCase().trim();
+    value(request.product.category)?.toLowerCase().trim();
 
   const tags = [
     'RPD',
@@ -59,7 +59,7 @@ function hashtags(request: DistributionRequest): string[] {
 
 function title(request: DistributionRequest): string {
   const product =
-    value(request.creative.product.title) ?? 'Fashion Find';
+    value(request.product.title) ?? 'Fashion Find';
 
   if (request.platform === 'youtube-shorts') {
     return `${product} | Fashion Deal`;
@@ -70,10 +70,10 @@ function title(request: DistributionRequest): string {
 
 function caption(request: DistributionRequest): string {
   const product =
-    value(request.creative.product.title) ?? 'this fashion find';
+    value(request.product.title) ?? 'this fashion find';
 
   const category =
-    value(request.creative.product.category) ?? 'fashion';
+    value(request.product.category) ?? 'fashion';
 
   const hook = request.creative.concept.hook;
 

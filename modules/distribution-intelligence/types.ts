@@ -1,4 +1,5 @@
 import type { ContentPackage } from '../content-intelligence/types.js';
+import type { NormalizedProduct } from '../../src/types.js';
 import type { CreativeExecutionPlan } from '../creative-orchestrator/types.js';
 
 export type DistributionPlatform =
@@ -9,6 +10,7 @@ export type DistributionPlatform =
 export type DistributionRequest = {
   platform: DistributionPlatform;
   creative: CreativeExecutionPlan;
+  product: NormalizedProduct;
   content?: ContentPackage | null;
   productUrl: string;
 };

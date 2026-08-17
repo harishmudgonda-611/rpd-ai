@@ -136,6 +136,7 @@ test('creates Instagram-ready distribution metadata', () => {
   const result = optimizeDistribution({
     platform: 'instagram',
     creative,
+    product,
     productUrl: product.sourceUrl,
   });
 
@@ -152,6 +153,7 @@ test('creates YouTube Shorts metadata without changing the canonical URL', () =>
   const result = optimizeDistribution({
     platform: 'youtube-shorts',
     creative,
+    product,
     productUrl: product.sourceUrl,
   });
 
@@ -168,6 +170,7 @@ test('uses WhatsApp-specific CTA', () => {
   const result = optimizeDistribution({
     platform: 'whatsapp',
     creative,
+    product,
     productUrl: product.sourceUrl,
   });
 
@@ -198,6 +201,7 @@ test('does not invent product facts', () => {
   const result = optimizeDistribution({
     platform: 'instagram',
     creative: incomplete,
+    product: incomplete.product,
     productUrl: product.sourceUrl,
   });
 
