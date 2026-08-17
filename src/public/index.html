@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>RPD AI</title>
+  <style>
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,sans-serif;
+      background:#f7f7f9;
+      color:#18181b;
+    }
+    .app{max-width:900px;margin:auto;padding:24px 16px 60px}
+    header{margin-bottom:24px}
+    h1{margin:0;font-size:30px}
+    .sub{color:#71717a;margin-top:6px}
+    .card{
+      background:white;
+      border:1px solid #e4e4e7;
+      border-radius:16px;
+      padding:20px;
+      margin-bottom:16px;
+      box-shadow:0 2px 8px rgba(0,0,0,.04)
+    }
+    label{display:block;font-weight:600;margin-bottom:8px}
+    input{
+      width:100%;
+      padding:14px;
+      border:1px solid #d4d4d8;
+      border-radius:10px;
+      font-size:16px;
+    }
+    button{
+      width:100%;
+      margin-top:12px;
+      padding:14px;
+      border:0;
+      border-radius:10px;
+      background:#ff4f87;
+      color:white;
+      font-size:16px;
+      font-weight:700;
+    }
+    button:disabled{opacity:.6}
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:12px;
+    }
+    .stat{
+      background:#fafafa;
+      border-radius:10px;
+      padding:14px;
+    }
+    .stat b{display:block;font-size:18px;margin-top:4px}
+    .badge{
+      display:inline-block;
+      background:#f4f4f5;
+      border-radius:999px;
+      padding:6px 10px;
+      margin:3px;
+      font-size:13px;
+    }
+    .error{
+      background:#fef2f2;
+      color:#b91c1c;
+      padding:12px;
+      border-radius:10px;
+      margin-top:12px;
+    }
+    .success{
+      background:#f0fdf4;
+      color:#166534;
+      padding:12px;
+      border-radius:10px;
+      margin-top:12px;
+    }
+    pre{
+      white-space:pre-wrap;
+      word-break:break-word;
+      background:#18181b;
+      color:#e4e4e7;
+      padding:14px;
+      border-radius:10px;
+      overflow:auto;
+      font-size:12px;
+    }
+    .hidden{display:none}
+    @media(max-width:600px){
+      .grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <h1>RPD AI</h1>
+    <div class="sub">AI Fashion Creative & Deal Intelligence</div>
+  </header>
+
+  <section class="card">
+    <label for="url">Product URL</label>
+    <input
+      id="url"
+      type="url"
+      placeholder="Paste Amazon / Flipkart / Myntra / product URL"
+      autocomplete="off"
+    >
+    <button id="generate">Generate RPD</button>
+    <div id="message"></div>
+  </section>
+
+  <section id="results" class="hidden">
+
+    <div class="card">
+      <h2>Product</h2>
+      <div class="grid">
+        <div class="stat">
+          Title
+          <b id="productTitle">—</b>
+        </div>
+        <div class="stat">
+          Category
+          <b id="productCategory">—</b>
+        </div>
+        <div class="stat">
+          Price
+          <b id="productPrice">—</b>
+        </div>
+        <div class="stat">
+          Discount
+          <b id="productDiscount">—</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Creative Decision</h2>
+      <div id="creativeBadges"></div>
+      <p id="creativeHook"></p>
+    </div>
+
+    <div class="card">
+      <h2>Selected Model</h2>
+      <div id="modelInfo">—</div>
+    </div>
+
+    <div class="card">
+      <h2>Carousel</h2>
+      <div class="grid">
+        <div class="stat">
+          Template
+          <b id="carouselTemplate">—</b>
+        </div>
+        <div class="stat">
+          Slides
+          <b id="carouselSlides">—</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Distribution</h2>
+      <div id="distribution"></div>
+    </div>
+
+    <div class="card">
+      <h2>Warnings</h2>
+      <div id="warnings">None</div>
+    </div>
+
+    <div class="card">
+      <details>
+        <summary>Raw pipeline result</summary>
+        <pre id="raw"></pre>
+      </details>
+    </div>
+
+  </section>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function field(obj) {
+  return obj && obj.value != null ? obj.value : null;
+}
+
+function money(product) {
+  const price = field(product.price);
+  const currency = field(product.currency) || 'INR';
+  return price == null ? '—' : `${currency} ${price}`;
+}
+
+function render(result) {
+  const product = result.product;
+  const creative = result.creative;
+  const generation = result.generation;
+
+  $('productTitle').textContent =
+    field(product.title) || 'Untitled product';
+
+  $('productCategory').textContent =
+    field(product.category) || '—';
+
+  $('productPrice').textContent = money(product);
+
+  const discount = field(product.discountPercent);
+  $('productDiscount').textContent =
+    discount == null ? '—' : `${discount}%`;
+
+  const intent = creative.concept.intent;
+
+  $('creativeBadges').innerHTML = [
+    intent.angle,
+    intent.objective,
+    intent.cta,
+    intent.template
+  ].map(x => `<span class="badge">${escapeHtml(x)}</span>`).join('');
+
+  $('creativeHook').textContent =
+    creative.concept.hook || '—';
+
+  const model = generation.selectedModel;
+
+  $('modelInfo').textContent =
+    model.asset
+      ? `${model.asset.id} • score ${model.score}`
+      : 'No compatible model asset selected';
+
+  $('carouselTemplate').textContent =
+    generation.carousel.template;
+
+  $('carouselSlides').textContent =
+    generation.carousel.slides.length;
+
+  $('distribution').innerHTML =
+    result.distribution.map(item => `
+      <div class="stat" style="margin-bottom:10px">
+        <strong>${escapeHtml(item.platform)}</strong>
+        <div>${escapeHtml(item.metadata.cta)}</div>
+        <small>${escapeHtml(item.metadata.title)}</small>
+      </div>
+    `).join('');
+
+  $('warnings').textContent =
+    result.warnings.length
+      ? result.warnings.join(' • ')
+      : 'None';
+
+  $('raw').textContent =
+    JSON.stringify(result, null, 2);
+
+  $('results').classList.remove('hidden');
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'","&#039;");
+}
+
+$('generate').addEventListener('click', async () => {
+  const url = $('url').value.trim();
+  const button = $('generate');
+
+  $('message').innerHTML = '';
+  $('results').classList.add('hidden');
+
+  if (!url) {
+    $('message').innerHTML =
+      '<div class="error">Product URL is required.</div>';
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = 'Generating...';
+
+  try {
+    const response = await fetch('/api/rpd/generate', {
+      method: 'POST',
+      headers: {'content-type':'application/json'},
+      body: JSON.stringify({
+        url,
+        platforms: [
+          'instagram',
+          'youtube-shorts',
+          'whatsapp'
+        ]
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || 'RPD generation failed');
+    }
+
+    $('message').innerHTML =
+      '<div class="success">RPD generated successfully.</div>';
+
+    render(data.result);
+
+  } catch (error) {
+    $('message').innerHTML =
+      `<div class="error">${escapeHtml(error.message)}</div>`;
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Generate RPD';
+  }
+});
+</script>
+</body>
+</html>

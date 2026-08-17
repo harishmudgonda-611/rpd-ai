@@ -12,6 +12,22 @@ const json = (res: any, status: number, body: unknown) => {
 
 const server = createServer(async (req, res) => {
   if (req.method === 'OPTIONS') return json(res, 204, {});
+
+  if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
+    res.writeHead(200, {
+      'content-type': 'text/html; charset=utf-8',
+      'access-control-allow-origin': '*',
+    });
+
+    const { readFile } = await import('node:fs/promises');
+    const html = await readFile(
+      new URL('./public/index.html', import.meta.url),
+      'utf8',
+    );
+
+    res.end(html);
+    return;
+  }
   if (req.method === 'GET' && req.url === '/health') return json(res, 200, { ok: true, service: 'rpd-product-intelligence', version: '0.2.0' });
   if (req.method === 'POST' && req.url === '/api/rpd/generate') {
     try {
