@@ -1,0 +1,1 @@
+Export adapter contract: render each CarouselDocument slide as 1080x1350 PNG/JPG/WebP using a local browser renderer. No paid API.
