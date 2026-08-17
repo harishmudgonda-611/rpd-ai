@@ -144,6 +144,21 @@
     </div>
 
     <div class="card">
+      <h2>Product Assets</h2>
+      <div class="grid">
+        <div class="stat">
+          Accepted Images
+          <b id="assetCount">—</b>
+        </div>
+        <div class="stat">
+          Asset Confidence
+          <b id="assetConfidence">—</b>
+        </div>
+      </div>
+      <p id="assetStatus">—</p>
+    </div>
+
+    <div class="card">
       <h2>Selected Model</h2>
       <div id="modelInfo">—</div>
     </div>
@@ -223,6 +238,19 @@ function render(result) {
 
   $('creativeHook').textContent =
     creative.concept.hook || '—';
+
+  const assets = result.assets;
+
+  $('assetCount').textContent =
+    assets.productImages.length;
+
+  $('assetConfidence').textContent =
+    `${Math.round(assets.confidence * 100)}%`;
+
+  $('assetStatus').textContent =
+    assets.primaryImage
+      ? `Primary product image selected: ${assets.primaryImage.url}`
+      : 'No trustworthy product image found';
 
   const model = generation.selectedModel;
 

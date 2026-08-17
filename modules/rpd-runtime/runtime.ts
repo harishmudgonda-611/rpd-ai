@@ -2,6 +2,7 @@ import { fetchAndExtractProduct } from '../../src/extractor.js';
 import { planCreative } from '../creative-orchestrator/orchestrator.js';
 import { generateRPD } from '../rpd-orchestrator/orchestrator.js';
 import { optimizeDistribution } from '../distribution-intelligence/optimizer.js';
+import { analyzeProductAssets } from '../product-asset-intelligence/analyzer.js';
 import type {
   RPDGenerateRequest,
   RPDGenerateResult,
@@ -22,6 +23,8 @@ export async function generateRPDFromUrl(
   }
 
   const product = await fetchAndExtractProduct(request.url.trim());
+
+  const assets = analyzeProductAssets(product.images);
 
   const creative = planCreative({
     product,
@@ -56,6 +59,7 @@ export async function generateRPDFromUrl(
   );
 
   const warnings = [
+    ...assets.warnings,
     ...creative.warnings,
     ...generation.warnings,
     ...distribution.flatMap((item) => item.warnings),
@@ -63,6 +67,7 @@ export async function generateRPDFromUrl(
 
   return {
     product,
+    assets,
     creative,
     generation,
     distribution,

@@ -2,6 +2,7 @@ import type { NormalizedProduct } from '../../src/types.js';
 import type { ModelAsset } from '../ai-fashion-model/types.js';
 import type { RPDGenerationResult } from '../rpd-orchestrator/types.js';
 import type { CreativeExecutionPlan } from '../creative-orchestrator/types.js';
+import type { ProductAssetAnalysis } from '../product-asset-intelligence/types.js';
 import type { DistributionPlatform, DistributionResult } from '../distribution-intelligence/types.js';
 
 export type RPDGenerateRequest = {
@@ -12,6 +13,7 @@ export type RPDGenerateRequest = {
 
 export type RPDGenerateResult = {
   product: NormalizedProduct;
+  assets: ProductAssetAnalysis;
   creative: CreativeExecutionPlan;
   generation: RPDGenerationResult;
   distribution: DistributionResult[];
