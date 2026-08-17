@@ -58,12 +58,33 @@ const server = createServer(async (req, res) => {
         result,
       });
     } catch (error) {
-      return json(res, 502, {
+      const extractionError = error as {
+        name?: string;
+        code?: string;
+        status?: number;
+        platform?: string;
+        message?: string;
+      };
+
+      const status =
+        extractionError.code === 'INVALID_URL'
+          ? 400
+          : extractionError.code === 'UPSTREAM_ACCESS_BLOCKED'
+            ? 424
+            : 502;
+
+      return json(res, status, {
         ok: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'RPD generation failed',
+        error: extractionError.message ?? 'RPD generation failed',
+        code: extractionError.code ?? 'RPD_GENERATION_FAILED',
+        platform: extractionError.platform ?? null,
+        upstreamStatus: extractionError.status ?? null,
+        nextStep:
+          extractionError.code === 'UPSTREAM_ACCESS_BLOCKED'
+            ? 'browser-assisted-extraction'
+            : extractionError.code === 'PRODUCT_DATA_NOT_FOUND'
+              ? 'verify-product-url'
+              : null,
       });
     }
   }

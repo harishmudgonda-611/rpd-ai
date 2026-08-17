@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import type { NormalizedProduct } from './types.js';
+import { ProductExtractionError } from './extraction-error.js';
 
 const first = (...values: Array<unknown>) => values.find(v => typeof v === 'string' ? v.trim().length > 0 : v !== null && v !== undefined);
 const clean = (v: unknown) => typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : null;
@@ -118,17 +119,133 @@ export function extractProduct(html: string, sourceUrl: string): NormalizedProdu
   };
 }
 
-export async function fetchAndExtractProduct(sourceUrl: string): Promise<NormalizedProduct> {
-  const url = new URL(sourceUrl);
-  if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Only HTTP(S) product URLs are supported');
+function platformFromHostname(hostname: string): string | null {
+  const host = hostname.toLowerCase();
+
+  if (host.includes('meesho')) return 'meesho';
+  if (host.includes('amazon')) return 'amazon';
+  if (host.includes('flipkart')) return 'flipkart';
+  if (host.includes('myntra')) return 'myntra';
+  if (host.includes('ajio')) return 'ajio';
+
+  return null;
+}
+
+function looksLikeAccessBlockedPage(html: string): boolean {
+  const sample = html.slice(0, 20000).toLowerCase();
+
+  const indicators = [
+    'access denied',
+    'request denied',
+    'you don\'t have permission to access',
+    'errors.edgesuite.net',
+    'akamai',
+    'reference #',
+    'forbidden',
+  ];
+
+  return indicators.filter((x) => sample.includes(x)).length >= 2;
+}
+
+function extractionQuality(product: NormalizedProduct): number {
+  let score = 0;
+
+  if (product.title.value) score += 1;
+  if (product.price.value != null) score += 1;
+  if (product.category.value) score += 1;
+  if (product.images.length > 0) score += 1;
+
+  return score;
+}
+
+export async function fetchAndExtractProduct(
+  sourceUrl: string,
+): Promise<NormalizedProduct> {
+  let url: URL;
+
+  try {
+    url = new URL(sourceUrl);
+  } catch {
+    throw new ProductExtractionError(
+      'INVALID_URL',
+      'Invalid product URL.',
+    );
+  }
+
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new ProductExtractionError(
+      'INVALID_URL',
+      'Only HTTP(S) product URLs are supported.',
+    );
+  }
+
+  const platform = platformFromHostname(url.hostname);
+
   const response = await fetch(url, {
     redirect: 'follow',
     headers: {
-      'user-agent': 'RPD-Product-Intelligence/0.1 (+local-user-request)',
-      'accept': 'text/html,application/xhtml+xml'
-    }
+      'user-agent':
+        'RPD-Product-Intelligence/0.2 (+local-user-request)',
+      'accept':
+        'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    },
   });
-  if (!response.ok) throw new Error(`Upstream returned HTTP ${response.status}`);
+
   const html = await response.text();
-  return extractProduct(html, response.url || sourceUrl);
+
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw new ProductExtractionError(
+        'UPSTREAM_ACCESS_BLOCKED',
+        platform
+          ? `${platform} blocked automated product access (HTTP ${response.status}).`
+          : `The product source blocked automated access (HTTP ${response.status}).`,
+        {
+          status: response.status,
+          platform: platform ?? undefined,
+        },
+      );
+    }
+
+    throw new ProductExtractionError(
+      'UPSTREAM_HTTP_ERROR',
+      `Product source returned HTTP ${response.status}.`,
+      {
+        status: response.status,
+        platform: platform ?? undefined,
+      },
+    );
+  }
+
+  if (looksLikeAccessBlockedPage(html)) {
+    throw new ProductExtractionError(
+      'UPSTREAM_ACCESS_BLOCKED',
+      platform
+        ? `${platform} returned an access-blocked page instead of product data.`
+        : 'The product source returned an access-blocked page instead of product data.',
+      {
+        status: response.status,
+        platform: platform ?? undefined,
+      },
+    );
+  }
+
+  const product = extractProduct(
+    html,
+    response.url || sourceUrl,
+  );
+
+  if (extractionQuality(product) < 2) {
+    throw new ProductExtractionError(
+      'PRODUCT_DATA_NOT_FOUND',
+      platform
+        ? `No reliable product data could be extracted from ${platform}.`
+        : 'No reliable product data could be extracted from this source.',
+      {
+        platform: platform ?? undefined,
+      },
+    );
+  }
+
+  return product;
 }

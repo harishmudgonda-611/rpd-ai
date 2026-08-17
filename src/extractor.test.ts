@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { extractProduct } from './extractor.js';
 
+import { fetchAndExtractProduct } from './extractor.js';
 const html = `<!doctype html><html><head>
 <link rel="canonical" href="https://shop.test/p/kurti" />
 <meta property="og:title" content="Blue Printed Kurti Set" />
@@ -36,4 +37,40 @@ test('does not invent missing product facts', () => {
   assert.equal(product.price.value, null);
   assert.equal(product.colors.length, 0);
   assert.ok(product.extraction.warnings.length >= 3);
+});
+
+test('rejects Meesho-style access-blocked HTML instead of treating it as product data', async () => {
+  const blockedHtml = `
+    <html>
+      <head><title>Access Denied</title></head>
+      <body>
+        <h1>Access Denied</h1>
+        You don't have permission to access this resource.
+        <a>errors.edgesuite.net</a>
+      </body>
+    </html>
+  `;
+
+  const sourceUrl = 'https://www.meesho.com/s/p/h1sm1g';
+
+  const response = {
+    ok: true,
+    status: 200,
+    url: sourceUrl,
+    text: async () => blockedHtml,
+  } as unknown as Response;
+
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async () => response) as unknown as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => fetchAndExtractProduct(sourceUrl),
+      (error: any) =>
+        error?.code === 'UPSTREAM_ACCESS_BLOCKED',
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
