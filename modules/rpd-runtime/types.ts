@@ -6,6 +6,7 @@ import type { ProductAssetAnalysis } from '../product-asset-intelligence/types.j
 import type { ExtractionResult } from '../extraction-adapters/types.js';
 import type { IntelligentExtractionResult } from '../extraction-intelligence/types.js';
 import type { ProductionManifest } from '../rpd-production/types.js';
+import type { RPDRenderResult } from '../render-intelligence/renderer.js';
 import type { DistributionPlatform, DistributionResult } from '../distribution-intelligence/types.js';
 
 export type RPDGenerateRequest = {
@@ -23,5 +24,6 @@ export type RPDGenerateResult = {
   creative: CreativeExecutionPlan;
   generation: RPDGenerationResult;
   distribution: DistributionResult[];
+  render: RPDRenderResult;
   warnings: string[];
 };

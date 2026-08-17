@@ -1,4 +1,3 @@
-
 import type { PlatformIntelligence } from '../platform-intelligence/types.js';
 import type { RenderPlan } from '../render-intelligence/types.js';
 

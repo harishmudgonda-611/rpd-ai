@@ -5,6 +5,7 @@ import { optimizeDistribution } from '../distribution-intelligence/optimizer.js'
 import { analyzeProductAssets } from '../product-asset-intelligence/analyzer.js';
 import { analyzeExtraction } from '../extraction-intelligence/analyzer.js';
 import { createProductionManifest } from '../rpd-production/pipeline.js';
+import { renderRPD } from '../render-intelligence/renderer.js';
 import type {
   RPDGenerateRequest,
   RPDGenerateResult,
@@ -81,6 +82,23 @@ export async function generateRPDFromUrl(
     modelImage: null,
   });
 
+  const render = await renderRPD({
+    productTitle: product.title.value,
+    price: product.price.value,
+    mrp: product.mrp.value,
+    discount: product.discountPercent.value,
+    productImages: assets.productImages.map((asset) => asset.url),
+    modelImage: null,
+    slides: generation.content.carousel?.map((slide: any) => ({
+      index: Number(slide.slide ?? slide.index ?? 1),
+      role: String(slide.role ?? 'details'),
+      headline: String(slide.headline ?? ''),
+      body: slide.body ?? null,
+    })) ?? [],
+    template: creative.concept.intent.template,
+    sourceUrl: product.sourceUrl,
+  });
+
   const warnings = [
     ...extraction.warnings,
     ...extractionIntelligence.quality.reasons,
@@ -88,6 +106,8 @@ export async function generateRPDFromUrl(
     ...creative.warnings,
     ...generation.warnings,
     ...distribution.flatMap((item) => item.warnings),
+    ...render.warnings,
+    ...production.warnings,
   ];
 
   return {
@@ -96,6 +116,7 @@ export async function generateRPDFromUrl(
     extractionIntelligence,
     assets,
     production,
+    render,
     creative,
     generation,
     distribution,
