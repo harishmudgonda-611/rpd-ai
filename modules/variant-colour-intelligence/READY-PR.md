@@ -1,0 +1,1 @@
+PR checklist: implementation complete; tests defined; free/open-source-only; merge after local verification.
