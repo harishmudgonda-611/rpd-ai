@@ -12,13 +12,32 @@ const slide=(slide:number,role:CarouselSlideCopy['role'],headline:string,body?:s
 
 export function generateContent(r:ContentRequest):ContentPackage{
  const angle=r.angle||'style', voice=r.brandVoice||'friendly', locale=r.locale||'en-IN', cta=r.cta||'shop-now', n=Math.min(8,Math.max(4,r.slideCount||6));
- const p=r.product, hook=angleHook(r,angle), slides:CarouselSlideCopy[]=[slide(1,'hook',hook),slide(2,'hero',title(r),[p.brand,p.description].filter(Boolean).join(' • ')||'A fresh fashion pick for your wardrobe')];
- if(n>=5)slides.push(slide(3,'benefits','Why you’ll like it', (p.features?.length?p.features.slice(0,3):['Easy to style','Made for everyday looks','A versatile wardrobe pick']).join(' • ')));
- if(n>=6&&p.colors?.length)slides.push(slide(4,'colors',`Available in ${p.colors.length} colour${p.colors.length===1?'':'s'}`,p.colors.slice(0,8).join(' • '),p.colors.slice(0,8)));
- if(n>=7)slides.push(slide(5,'details','Style it your way', (p.occasions?.length?p.occasions:['Casual days','Office looks','Weekend outings']).slice(0,3).join(' • ')));
+ const p=r.product, hook=angleHook(r,angle), candidates:CarouselSlideCopy[]=[
+   slide(1,'hook',hook),
+   slide(2,'hero',title(r),[p.brand,p.description].filter(Boolean).join(' • ')||'A fresh fashion pick for your wardrobe'),
+   slide(3,'benefits','Why you’ll like it',(p.features?.length?p.features.slice(0,3):['Easy to style','Made for everyday looks','A versatile wardrobe pick']).join(' • '))
+ ];
+
+ if(p.colors?.length){
+   candidates.push(slide(4,'colors',`Available in ${p.colors.length} colour${p.colors.length===1?'':'s'}`,p.colors.slice(0,8).join(' • '),p.colors.slice(0,8)));
+ }
+
+ candidates.push(
+   slide(5,'details','Style it your way',(p.occasions?.length?p.occasions:['Casual days','Office looks','Weekend outings']).slice(0,3).join(' • '))
+ );
+
  const priceText=p.price!=null?`Now ${money(p.price,p.currency||'INR')}`:'Check the current price';
- if(n>=8)slides.push(slide(6,'price',priceText,p.mrp&&p.price&&p.mrp>p.price?`${money(p.mrp,p.currency||'INR')} MRP • ${Math.round(((p.mrp-p.price)/p.mrp)*100)}% off`:undefined));
- slides.push(slide(n,'cta',ctaText(cta)));
+ candidates.push(
+   slide(6,'price',priceText,p.mrp&&p.price&&p.mrp>p.price?`${money(p.mrp,p.currency||'INR')} MRP • ${Math.round(((p.mrp-p.price)/p.mrp)*100)}% off`:undefined)
+ );
+
+ if(p.sizes?.length){
+   candidates.push(slide(7,'details','Available sizes',p.sizes.slice(0,8).join(' • '),p.sizes.slice(0,8)));
+ }
+
+ candidates.push(slide(8,'cta',ctaText(cta)));
+
+ const slides=candidates.slice(0,n).map((s,i)=>({...s,slide:i+1}));
  const caption=`${hook}\n\n${title(r)}${p.price!=null?` • ${money(p.price,p.currency||'INR')}`:''}\n\n${p.description?clean(p.description).slice(0,240):'A versatile fashion find to add to your wardrobe.'}\n\n${ctaText(cta)}.`;
  const warnings:string[]=[]; if(!p.price)warnings.push('Price unavailable; price claims were not invented.'); if(!p.colors?.length)warnings.push('Colour data unavailable; colour slide should be adapted by the carousel renderer.');
  return {hook,alternativeHooks:alternatives(r),carousel:slides.slice(0,n),caption,cta:ctaText(cta),hashtags:hashtags(r),keywords:[category(r),'fashion','budget fashion',...(p.colors||[]).slice(0,5)],metadata:{angle,voice,locale,generatedBy:'rpd-content-intelligence-v1'},warnings};

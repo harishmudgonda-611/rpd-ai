@@ -49,7 +49,7 @@ export function extractProduct(html: string, sourceUrl: string): NormalizedProdu
   const p = products[0] ?? {};
   const offer = Array.isArray(p.offers) ? p.offers[0] ?? {} : (p.offers ?? {});
   const aggregate = p.aggregateRating ?? {};
-  const imageValues = Array.isArray(p.image) ? p.image : [p.image];
+  const imageValues: unknown[] = Array.isArray(p.image) ? p.image : [p.image];
 
   const title = clean(first(p.name, meta($, 'og:title'), meta($, 'twitter:title'), $('h1').first().text(), $('title').first().text()));
   const description = clean(first(p.description, meta($, 'og:description'), meta($, 'description')));
