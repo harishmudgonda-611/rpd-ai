@@ -1,0 +1,8 @@
+{
+  "name": "@rpd/variant-colour-intelligence",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test analyzer.test.ts"
+  }
+}
