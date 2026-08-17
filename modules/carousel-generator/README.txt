@@ -1,0 +1,1 @@
+RPD Module 05: carousel generation. Five original templates. 1080x1350. 4-8 slides. Local-only rendering architecture.
