@@ -1,0 +1,1 @@
+Ready for review. Test with: npx tsx --test modules/variant-colour-intelligence/analyzer.test.ts
