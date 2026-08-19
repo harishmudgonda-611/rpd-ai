@@ -2,15 +2,13 @@ import { createServer } from 'node:http';
 import { fetchAndExtractProduct } from './extractor.js';
 import { generateRPDFromUrl } from '../modules/rpd-runtime/runtime.js';
 
-const port = Number(process.env.PORT ?? 8787);
-const host = process.env.HOST ?? '127.0.0.1';
-
 const json = (res: any, status: number, body: unknown) => {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' });
   res.end(JSON.stringify(body, null, 2));
 };
 
-const server = createServer(async (req, res) => {
+export function createRPDServer() {
+  return createServer(async (req, res) => {
   if (req.method === 'OPTIONS') return json(res, 204, {});
 
   if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
@@ -103,5 +101,34 @@ const server = createServer(async (req, res) => {
   }
   return json(res, 404, { ok: false, error: 'Not found' });
 });
+}
 
-server.listen(port, host, () => console.log(`RPD Product Intelligence listening on http://${host}:${port}`));
+export function startServer(port = Number(process.env.PORT ?? 8787), host = process.env.HOST ?? '127.0.0.1') {
+  const app = createRPDServer();
+
+  app.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Port ${port} is already in use. Clean up running process or choose a free port with PORT environment variable.`);
+      process.exit(1);
+    }
+  });
+
+  const serverInstance = app.listen(port, host, () => {
+    console.log(`RPD Product Intelligence listening on http://${host}:${port}`);
+  });
+
+  const shutdown = () => {
+    serverInstance.close(() => {
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+
+  return serverInstance;
+}
+
+if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) {
+  startServer();
+}

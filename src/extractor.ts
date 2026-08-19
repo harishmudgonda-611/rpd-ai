@@ -66,8 +66,17 @@ export function extractProduct(html: string, sourceUrl: string): NormalizedProdu
     ...$('img').map((_, el) => absolute(clean($(el).attr('src')), sourceUrl)).get()
   ]);
 
-  const colorText = first(p.color, $('[itemprop="color"]').first().text(), $('[data-color]').first().attr('data-color'));
-  const colors = uniqueStrings(Array.isArray(colorText) ? colorText.map(clean) : [clean(colorText)]).map(name => ({ name, source: 'jsonld/dom' }));
+  const rawColorText = first(p.color, $('[itemprop="color"]').first().text(), $('[data-color]').first().attr('data-color'));
+  const isTechColor = (v: string) => {
+    const s = v.trim();
+    return /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(s) ||
+           /^(rgb|rgba|hsl|hsla)\s*\(/i.test(s) ||
+           /^var\s*\(/i.test(s) ||
+           /\b(color|background|fill|stroke)\s*:/i.test(s) || s.includes(';') ||
+           /^0x[0-9a-f]+/i.test(s);
+  };
+  const colorArray = Array.isArray(rawColorText) ? rawColorText.map(clean) : [clean(rawColorText)];
+  const colors = uniqueStrings(colorArray.filter((c): c is string => Boolean(c) && !isTechColor(c!))).map(name => ({ name, source: 'jsonld/dom' }));
   const sizes = uniqueStrings([
     ...(Array.isArray(p.size) ? p.size.map(clean) : [clean(p.size)]),
     ...$('[itemprop="size"]').map((_, el) => clean($(el).text())).get()
