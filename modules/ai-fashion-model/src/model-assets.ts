@@ -4,6 +4,8 @@ import { extname, join, relative, basename } from 'node:path';
 import type { ModelAsset, ModelPose } from './types.js';
 
 const IMAGE_EXTENSIONS = new Set(['.jpg','.jpeg','.png','.webp','.avif']);
+const PNG_SIGNATURE = Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]);
+
 const poseFromName = (name: string): ModelPose => {
   const n = name.toLowerCase();
   if (/front|straight|standing/.test(n)) return 'front';
@@ -45,9 +47,9 @@ export async function scanModelAssets(root: string): Promise<ModelAsset[]> {
 async function readImageDimensions(path: string): Promise<{width:number;height:number}> {
   const buffer = await import('node:fs/promises').then(fs => fs.readFile(path));
   if (buffer.length < 24) throw new Error('not an image');
-  if (buffer.toString('ascii',0,8) === '\x89PNG\r\n\x1a\n') return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
-  if (buffer.toString('ascii',0,2) === 'BM') return { width: buffer.readInt32LE(18), height: Math.abs(buffer.readInt32LE(22)) };
-  if (buffer.toString('ascii',0,4) === 'RIFF' && buffer.toString('ascii',8,12) === 'WEBP' && buffer.toString('ascii',12,16) === 'VP8X') return { width: 1 + buffer.readUIntLE(24,3), height: 1 + buffer.readUIntLE(27,3) };
+  if (buffer.subarray(0, 8).equals(PNG_SIGNATURE)) return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+  if (buffer.subarray(0, 2).equals(Buffer.from('BM'))) return { width: buffer.readInt32LE(18), height: Math.abs(buffer.readInt32LE(22)) };
+  if (buffer.subarray(0, 4).equals(Buffer.from('RIFF')) && buffer.subarray(8,12).equals(Buffer.from('WEBP')) && buffer.subarray(12,16).equals(Buffer.from('VP8X'))) return { width: 1 + buffer.readUIntLE(24,3), height: 1 + buffer.readUIntLE(27,3) };
   throw new Error('dimensions unavailable for this format');
 }
 
