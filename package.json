@@ -9,6 +9,7 @@
     "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.7",
     "cheerio": "^1.1.2"
   },
   "devDependencies": {

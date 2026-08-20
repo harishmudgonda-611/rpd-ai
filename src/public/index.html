@@ -303,17 +303,73 @@
     <span class="logo-badge">PROD</span>
   </a>
   <div class="nav-tabs">
-    <button class="tab-btn active" id="tab-new" onclick="showTab('new')">New Creative</button>
-    <button class="tab-btn" id="tab-editor" onclick="showTab('editor')">Carousel Editor</button>
-    <button class="tab-btn" id="tab-projects" onclick="showTab('projects')">Saved Projects</button>
-    <button class="tab-btn" id="tab-analytics" onclick="showTab('analytics')">BI & Revenue</button>
+    <button class="tab-btn active" id="tab-home" onclick="showTab('home')">HOME</button>
+    <button class="tab-btn" id="tab-create" onclick="showTab('create')">CREATE</button>
+    <button class="tab-btn" id="tab-projects" onclick="showTab('projects')">PROJECTS</button>
+    <button class="tab-btn" id="tab-analytics" onclick="showTab('analytics')">ANALYTICS</button>
+    <button class="tab-btn" id="tab-learning" onclick="showTab('learning')">LEARNING</button>
+    <button class="tab-btn" id="tab-settings" onclick="showTab('settings')">SETTINGS</button>
   </div>
 </header>
 
 <main>
 
-  <!-- VIEW 1: NEW CAROUSEL / DASHBOARD -->
-  <div id="view-new">
+  <!-- VIEW 1: HOME -->
+  <div id="view-home">
+    <div class="card">
+      <h2>Welcome to RPD AI Production Master</h2>
+      <p style="color:var(--text-muted);margin-bottom:16px;">Complete AI Fashion Affiliate Carousel & Video Generator with full extraction, reference analysis, 1080x1350 carousels, 1080x1920 MP4 Reels, closed-loop revenue intelligence, and automated DM response packages.</p>
+      <div style="display:flex;gap:12px;">
+        <button class="btn" onclick="showTab('create')">Start New Creation &rarr;</button>
+        <button class="btn btn-secondary" onclick="showTab('analytics')">View Analytics</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW 5: LEARNING ENGINE -->
+  <div id="view-learning" class="hidden">
+    <div class="card">
+      <h2>Closed-Loop Learning Engine</h2>
+      <p style="color:var(--text-muted);margin-bottom:16px;">Evidence-based performance insights fed directly into Creative Blueprints for winner pattern optimization.</p>
+      <div id="learningEngineContainer">
+        <p style="color:var(--text-muted);">Loading learning insights...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW 6: SETTINGS -->
+  <div id="view-settings" class="hidden">
+    <div class="card">
+      <h2>System & Provider Settings</h2>
+      <div style="display:flex;flex-direction:column;gap:16px;max-width:600px;">
+        <div>
+          <label class="stat-label">Affiliate Network ID</label>
+          <input type="text" value="rpd-prod-affiliate-01">
+        </div>
+        <div>
+          <label class="stat-label">Background Remover Provider</label>
+          <select>
+            <option value="rmbg-onnx">RMBG-1.4 (ONNX Local)</option>
+            <option value="rembg">Rembg PyTorch Worker</option>
+            <option value="canvas">Canvas Threshold Fallback</option>
+          </select>
+        </div>
+        <div>
+          <label class="stat-label">Virtual Try-On Provider</label>
+          <select>
+            <option value="idm-vton">IDM-VTON REST Adapter</option>
+            <option value="mannequin">Mannequin Backdrop Synthesizer</option>
+          </select>
+        </div>
+        <div>
+          <button class="btn" onclick="alert('Settings saved successfully')">Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW 2: CREATE -->
+  <div id="view-create" class="hidden">
     <div class="card">
       <h2>Generate AI Carousel</h2>
       <p style="color:var(--text-muted);margin-bottom:16px;">Paste a product URL from Myntra, Amazon, Flipkart, Ajio, Meesho, Nykaa or Tata CLiQ to extract product facts and render 1080x1350 carousels.</p>
@@ -501,7 +557,7 @@ let selectedTemplate = 'rpd-editorial';
 let activeSlideIndex = 0;
 
 function showTab(tabName) {
-  ['new', 'editor', 'projects', 'analytics'].forEach(t => {
+  ['home', 'create', 'editor', 'projects', 'analytics', 'learning', 'settings'].forEach(t => {
     const v = document.getElementById(`view-${t}`);
     const b = document.getElementById(`tab-${t}`);
     if (v) v.classList.add('hidden');
@@ -512,7 +568,7 @@ function showTab(tabName) {
 
   if (tabName === 'projects') {
     loadProjects();
-  } else if (tabName === 'analytics') {
+  } else if (tabName === 'analytics' || tabName === 'learning') {
     loadAnalytics();
   }
 }

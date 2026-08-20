@@ -3,9 +3,8 @@ import { renderSlideToCanvas } from './canvas-renderer.js';
 
 export async function exportSlideToPng(slide: CarouselSlide): Promise<{ buffer: Buffer; mimeType: 'image/png' }> {
   const canvasRes = await renderSlideToCanvas(slide);
-  const buffer = Buffer.from(canvasRes.svgOutput, 'utf-8');
   return {
-    buffer,
+    buffer: canvasRes.pngBuffer,
     mimeType: 'image/png',
   };
 }

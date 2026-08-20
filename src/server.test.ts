@@ -87,6 +87,32 @@ test('GET /api/projects and POST /api/projects manages persistent projects', asy
   }
 });
 
+test('POST /api/rpd/export/mp4 renders and validates 1080x1920 MP4 reel video', async () => {
+  const app = createRPDServer();
+  const { port, close } = await listenServer(app);
+
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/api/rpd/export/mp4`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        width: 1080,
+        height: 1920,
+        durationSeconds: 15,
+        slides: [{ headline: 'MP4 Reel Headline' }]
+      }),
+    });
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.equal(data.ok, true);
+    assert.equal(data.video.width, 1080);
+    assert.equal(data.video.height, 1920);
+    assert.equal(data.validation.isValid, true);
+  } finally {
+    await close();
+  }
+});
+
 test('POST /api/rpd/export/pdf returns pdf metadata manifest', async () => {
   const app = createRPDServer();
   const { port, close } = await listenServer(app);

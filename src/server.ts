@@ -170,6 +170,28 @@ export function createRPDServer() {
     }
   }
 
+  // MP4 Video export endpoint
+  if (req.method === 'POST' && req.url === '/api/rpd/export/mp4') {
+    try {
+      let raw = '';
+      for await (const chunk of req) raw += chunk;
+      const body = JSON.parse(raw || '{}');
+      const { render1080x1920Mp4Video } = await import('../modules/render-intelligence/video-renderer.js');
+      const { validateMp4Video } = await import('../modules/render-intelligence/video-validator.js');
+
+      const videoRes = await render1080x1920Mp4Video(body);
+      const validation = await validateMp4Video(videoRes.videoPath);
+
+      return json(res, 200, {
+        ok: true,
+        video: videoRes,
+        validation,
+      });
+    } catch (error) {
+      return json(res, 500, { ok: false, error: 'Failed to prepare MP4 video export' });
+    }
+  }
+
   // PDF Carousel export endpoint
   if (req.method === 'POST' && req.url === '/api/rpd/export/pdf') {
     try {
