@@ -19,6 +19,30 @@ const html = `<!doctype html><html><head>
   "aggregateRating":{"ratingValue":"4.4","reviewCount":"125"}
 }</script></head><body><h1>Fallback title</h1></body></html>`;
 
+test('rejects technical color values such as hex codes from extracted product colors', () => {
+  const html = `
+    <!doctype html>
+    <html>
+      <head>
+        <title>DAMAAR TEXTILE Tropical Print Top</title>
+        <script type="application/ld+json">
+        {
+          "@type": "Product",
+          "name": "DAMAAR TEXTILE Tropical Print Top",
+          "color": "#ee5f73",
+          "offers": { "@type": "Offer", "price": 298, "priceCurrency": "INR" }
+        }
+        </script>
+      </head>
+      <body>
+        <div data-color="#ee5f73">#ee5f73</div>
+      </body>
+    </html>
+  `;
+  const product = extractProduct(html, 'https://www.myntra.com/top/123');
+  assert.equal(product.colors.length, 0);
+});
+
 test('extracts normalized product data from JSON-LD and metadata', () => {
   const product = extractProduct(html, 'https://shop.test/p/kurti');
   assert.equal(product.title.value, 'Blue Printed Kurti Set');

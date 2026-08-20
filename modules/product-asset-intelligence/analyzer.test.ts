@@ -17,6 +17,27 @@ test('selects a trustworthy product image', () => {
   assert.equal(result.duplicateImages.length, 0);
 });
 
+test('rejects navigation banners, promotional banners, and UI graphics', () => {
+  const result = analyzeProductAssets([
+    {
+      url: 'https://constant.myntassets.com/web/assets/img/sudio-nav-banner.png',
+      source: 'dom',
+    },
+    {
+      url: 'https://cdn.example.com/assets/header-promo-banner.webp',
+      source: 'dom',
+    },
+    {
+      url: 'https://cdn.example.com/assets/chevron-right.svg',
+      source: 'dom',
+    },
+  ]);
+
+  assert.equal(result.primaryImage, null);
+  assert.equal(result.productImages.length, 0);
+  assert.equal(result.rejectedImages.length, 3);
+});
+
 test('rejects obvious platform logos', () => {
   const result = analyzeProductAssets([
     {

@@ -5,3 +5,8 @@ dist/
 !.env.example
 *.log
 .DS_Store
+
+# Output & runtime data
+modules/rpd-production/output/
+data/projects/
+data/bi/

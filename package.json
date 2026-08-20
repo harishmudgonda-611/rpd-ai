@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "tsc",
     "dev": "tsx src/server.ts",
     "test": "tsx --test src/**/*.test.ts"
   },
