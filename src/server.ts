@@ -169,6 +169,26 @@ export function createRPDServer() {
     }
   }
 
+  // Multi-slide ZIP export endpoint
+  if (req.method === 'POST' && req.url === '/api/rpd/export/zip') {
+    try {
+      let raw = '';
+      for await (const chunk of req) raw += chunk;
+      const body = JSON.parse(raw || '{}');
+      const render = await renderRPD(body);
+
+      // Return ZIP metadata manifest and slide SVGs for client zipping
+      return json(res, 200, {
+        ok: true,
+        zipFilename: `rpd-carousel-${Date.now()}.zip`,
+        slideCount: render.slideCount,
+        assets: render.assets
+      });
+    } catch (error) {
+      return json(res, 500, { ok: false, error: 'Failed to prepare ZIP export' });
+    }
+  }
+
   // Analytics & Business Intelligence Endpoints
   if (req.method === 'POST' && req.url === '/api/analytics/views') {
     try {

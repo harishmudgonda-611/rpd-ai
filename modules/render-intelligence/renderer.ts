@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { materializeAsset } from './materializer.js';
 
 export type RenderAsset = {
   url?: string | null;
@@ -245,6 +246,12 @@ export async function renderRPD(
 
   for (const slide of slides) {
     const id = `rpd-slide-${String(slide.index).padStart(2, '0')}`;
+
+    // Materialize images for slide if remote
+    const rawImage = input.modelImage || input.productImages?.[slide.index - 1] || input.productImages?.[0] || slide.assets?.find((a) => a.type === 'image')?.url || null;
+    if (rawImage) {
+      await materializeAsset(rawImage);
+    }
 
     const svgPath = join(outputDir, `${id}.svg`);
     const htmlPath = join(outputDir, `${id}.html`);
