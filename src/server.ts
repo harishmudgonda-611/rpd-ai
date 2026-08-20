@@ -1,6 +1,8 @@
 import { createServer } from 'node:http';
 import { fetchAndExtractProduct } from './extractor.js';
 import { generateRPDFromUrl } from '../modules/rpd-runtime/runtime.js';
+import { listProjects, saveProject, getProject, deleteProject } from './projects.js';
+import { renderRPD } from '../modules/render-intelligence/renderer.js';
 
 const json = (res: any, status: number, body: unknown) => {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' });
@@ -25,6 +27,22 @@ export function createRPDServer() {
 
     res.end(html);
     return;
+  }
+
+  if (req.method === 'GET' && req.url?.startsWith('/modules/rpd-production/output/')) {
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const { join } = await import('node:path');
+      const fileName = req.url.replace('/modules/rpd-production/output/', '');
+      const filePath = join(process.cwd(), 'modules', 'rpd-production', 'output', fileName);
+      const content = await readFile(filePath, 'utf8');
+      const contentType = fileName.endsWith('.svg') ? 'image/svg+xml' : fileName.endsWith('.html') ? 'text/html' : 'text/plain';
+      res.writeHead(200, { 'content-type': `${contentType}; charset=utf-8`, 'access-control-allow-origin': '*' });
+      res.end(content);
+      return;
+    } catch {
+      return json(res, 404, { ok: false, error: 'File not found' });
+    }
   }
   if (req.method === 'GET' && req.url === '/health') return json(res, 200, { ok: true, service: 'rpd-product-intelligence', version: '0.2.0' });
   if (req.method === 'POST' && req.url === '/api/rpd/generate') {
@@ -99,6 +117,55 @@ export function createRPDServer() {
       return json(res, 502, { ok: false, error: error instanceof Error ? error.message : 'Product extraction failed' });
     }
   }
+
+  // Project persistence endpoints
+  if (req.method === 'GET' && req.url === '/api/projects') {
+    try {
+      const projects = await listProjects();
+      return json(res, 200, { ok: true, projects });
+    } catch (error) {
+      return json(res, 500, { ok: false, error: 'Failed to list projects' });
+    }
+  }
+
+  if (req.method === 'POST' && req.url === '/api/projects') {
+    try {
+      let raw = '';
+      for await (const chunk of req) raw += chunk;
+      const body = JSON.parse(raw || '{}');
+      const project = await saveProject(body);
+      return json(res, 200, { ok: true, project });
+    } catch (error) {
+      return json(res, 500, { ok: false, error: 'Failed to save project' });
+    }
+  }
+
+  if (req.method === 'GET' && req.url?.startsWith('/api/projects/')) {
+    const id = req.url.replace('/api/projects/', '');
+    const project = await getProject(id);
+    if (!project) return json(res, 404, { ok: false, error: 'Project not found' });
+    return json(res, 200, { ok: true, project });
+  }
+
+  if (req.method === 'DELETE' && req.url?.startsWith('/api/projects/')) {
+    const id = req.url.replace('/api/projects/', '');
+    const deleted = await deleteProject(id);
+    return json(res, 200, { ok: true, deleted });
+  }
+
+  // Render SVG / HTML slide endpoint
+  if (req.method === 'POST' && req.url === '/api/rpd/render') {
+    try {
+      let raw = '';
+      for await (const chunk of req) raw += chunk;
+      const body = JSON.parse(raw || '{}');
+      const render = await renderRPD(body);
+      return json(res, 200, { ok: true, render });
+    } catch (error) {
+      return json(res, 500, { ok: false, error: 'Failed to render RPD slides' });
+    }
+  }
+
   return json(res, 404, { ok: false, error: 'Not found' });
 });
 }

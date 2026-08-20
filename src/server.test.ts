@@ -50,6 +50,67 @@ test('POST /api/product/extract returns error on invalid payload', async () => {
   }
 });
 
+test('GET /api/projects and POST /api/projects manages persistent projects', async () => {
+  const app = createRPDServer();
+  const { port, close } = await listenServer(app);
+
+  try {
+    const listRes = await fetch(`http://127.0.0.1:${port}/api/projects`);
+    assert.equal(listRes.status, 200);
+    const listData = await listRes.json();
+    assert.equal(listData.ok, true);
+    assert.ok(Array.isArray(listData.projects));
+
+    const saveRes = await fetch(`http://127.0.0.1:${port}/api/projects`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Test Saved Carousel Project',
+        template: 'rpd-pink-deal',
+        slides: [{ index: 1, headline: 'Slide Headline' }],
+      }),
+    });
+    assert.equal(saveRes.status, 200);
+    const saveData = await saveRes.json();
+    assert.equal(saveData.ok, true);
+    assert.equal(saveData.project.title, 'Test Saved Carousel Project');
+
+    const getRes = await fetch(`http://127.0.0.1:${port}/api/projects/${saveData.project.id}`);
+    assert.equal(getRes.status, 200);
+    const getData = await getRes.json();
+    assert.equal(getData.project.template, 'rpd-pink-deal');
+
+    const delRes = await fetch(`http://127.0.0.1:${port}/api/projects/${saveData.project.id}`, { method: 'DELETE' });
+    assert.equal(delRes.status, 200);
+  } finally {
+    await close();
+  }
+});
+
+test('POST /api/rpd/render renders slides to output directory', async () => {
+  const app = createRPDServer();
+  const { port, close } = await listenServer(app);
+
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/api/rpd/render`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        productTitle: 'Render Test Product',
+        price: 298,
+        slides: [{ index: 1, role: 'hero', headline: 'Test Render Slide' }],
+        template: 'rpd-editorial',
+      }),
+    });
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.equal(data.ok, true);
+    assert.ok(data.render.assets.length > 0);
+  } finally {
+    await close();
+  }
+});
+
 test('POST /api/rpd/generate handles end-to-end carousel generation request', async () => {
   // Create a mock product HTML server
   const mockProductHtml = `
