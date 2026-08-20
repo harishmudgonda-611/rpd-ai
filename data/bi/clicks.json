@@ -1,6 +1,6 @@
 [
   {
-    "clickId": "click_1787241867167_rt85f",
+    "clickId": "click_1787243432729_42959",
     "contentId": "c_e2e",
     "productId": "p_e2e",
     "affiliateNetwork": "myntra",
@@ -9,18 +9,18 @@
     "platform": "instagram",
     "campaign": "rpd-campaign",
     "creativeId": "default-creative",
-    "timestamp": "2026-08-20T16:04:27.167Z"
+    "timestamp": "2026-08-20T16:30:32.729Z"
   },
   {
-    "clickId": "click_c_filt_1787241867322",
-    "contentId": "c_filt_1787241867322",
+    "clickId": "click_c_filt_1787243432953",
+    "contentId": "c_filt_1787243432953",
     "productId": "p_test1",
     "affiliateNetwork": "myntra",
     "affiliateLink": "",
-    "trackingId": "trk_c_filt_1787241867322",
+    "trackingId": "trk_c_filt_1787243432953",
     "platform": "instagram",
     "campaign": "rpd-campaign",
     "creativeId": "default-creative",
-    "timestamp": "2026-08-20T16:04:27.340Z"
+    "timestamp": "2026-08-20T16:30:32.972Z"
   }
 ]
