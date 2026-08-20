@@ -34,6 +34,20 @@ export async function materializeAsset(url: string): Promise<MaterializedAsset> 
   const localPath = join(CACHE_DIR, filename);
 
   try {
+    const { stat } = await import('node:fs/promises');
+    await stat(localPath);
+    return {
+      originalUrl: url,
+      localPath,
+      filename,
+      mimeType: ext === '.png' ? 'image/png' : ext === '.svg' ? 'image/svg+xml' : 'image/jpeg',
+      success: true,
+    };
+  } catch {
+    // File not cached yet, download below
+  }
+
+  try {
     const res = await fetch(url, { headers: { 'user-agent': 'RPD-Asset-Materializer/1.0' } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const buffer = Buffer.from(await res.arrayBuffer());

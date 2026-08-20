@@ -193,6 +193,14 @@ function normalizedUrl(url: string): string {
   }
 }
 
+export function isJunkAssetUrl(url: string): boolean {
+  const normalized = url.toLowerCase();
+  for (const pattern of junkPatterns) {
+    if (normalized.includes(pattern)) return true;
+  }
+  return false;
+}
+
 export function analyzeProductAssets(
   images: Array<{ url: string; source?: string }>,
 ): ProductAssetAnalysis {

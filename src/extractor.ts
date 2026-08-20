@@ -16,7 +16,7 @@ const absolute = (value: string | null, base: string) => {
   try { return new URL(value, base).toString(); } catch { return null; }
 };
 
-function jsonLdProducts($: cheerio.CheerioAPI) {
+export function parseJsonLdMetadata($: cheerio.CheerioAPI) {
   const found: any[] = [];
   $('script[type="application/ld+json"]').each((_, el) => {
     const raw = $(el).text();
@@ -34,6 +34,10 @@ function jsonLdProducts($: cheerio.CheerioAPI) {
     } catch { /* malformed JSON-LD is ignored */ }
   });
   return found;
+}
+
+function jsonLdProducts($: cheerio.CheerioAPI) {
+  return parseJsonLdMetadata($);
 }
 
 function meta($: cheerio.CheerioAPI, key: string) {
@@ -167,6 +171,43 @@ function extractionQuality(product: NormalizedProduct): number {
   return score;
 }
 
+export async function fetchWithRetry(
+  url: URL,
+  retries = 2,
+  timeoutMs = 10000,
+): Promise<Response> {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, {
+        redirect: 'follow',
+        signal: controller.signal,
+        headers: {
+          'user-agent': 'RPD-Product-Intelligence/0.2 (+local-user-request)',
+          'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        },
+      });
+      clearTimeout(timer);
+      if (res.ok || attempt === retries) {
+        return res;
+      }
+    } catch (err: any) {
+      clearTimeout(timer);
+      lastError = err;
+      if (attempt === retries) {
+        throw new ProductExtractionError(
+          'UPSTREAM_HTTP_ERROR',
+          `Failed to fetch URL after ${retries + 1} attempts: ${err.message || 'Network error'}`,
+        );
+      }
+      await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+    }
+  }
+  throw lastError || new Error('Fetch failed');
+}
+
 export async function fetchAndExtractProduct(
   sourceUrl: string,
 ): Promise<NormalizedProduct> {
@@ -190,15 +231,7 @@ export async function fetchAndExtractProduct(
 
   const platform = platformFromHostname(url.hostname);
 
-  const response = await fetch(url, {
-    redirect: 'follow',
-    headers: {
-      'user-agent':
-        'RPD-Product-Intelligence/0.2 (+local-user-request)',
-      'accept':
-        'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    },
-  });
+  const response = await fetchWithRetry(url);
 
   const html = await response.text();
 
@@ -257,4 +290,24 @@ export async function fetchAndExtractProduct(
   }
 
   return product;
+}
+
+export async function fetchAndExtractProductsBatch(
+  sourceUrls: string | string[],
+): Promise<NormalizedProduct[]> {
+  const urls = (Array.isArray(sourceUrls) ? sourceUrls : [sourceUrls])
+    .map(u => typeof u === 'string' ? u.trim() : '')
+    .filter(Boolean);
+
+  if (urls.length === 0) {
+    throw new ProductExtractionError('INVALID_URL', 'At least one valid product URL is required.');
+  }
+
+  const results: NormalizedProduct[] = [];
+  for (const url of urls) {
+    const product = await fetchAndExtractProduct(url);
+    results.push(product);
+  }
+
+  return results;
 }

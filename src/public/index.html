@@ -317,11 +317,14 @@
     <div class="card">
       <h2>Generate AI Carousel</h2>
       <p style="color:var(--text-muted);margin-bottom:16px;">Paste a product URL from Myntra, Amazon, Flipkart, Ajio, Meesho, Nykaa or Tata CLiQ to extract product facts and render 1080x1350 carousels.</p>
-      <div class="input-group">
-        <input type="url" id="productUrl" placeholder="https://www.myntra.com/top/damaar-textile/top/42908239/buy">
+      <div style="margin-bottom:12px;">
+        <textarea id="productUrl" rows="3" placeholder="Paste single or multiple product URLs (one per line or comma-separated)&#10;https://www.myntra.com/top/damaar-textile/top/42908239/buy"></textarea>
+      </div>
+      <div style="display:flex;justify-content:flex-end;">
         <button class="btn" id="btnGenerate" onclick="generateCarousel()">Generate RPD</button>
       </div>
       <div id="statusMsg" style="margin-top:12px;"></div>
+      <div id="recommendationBanner" style="margin-top:12px;font-size:13px;color:var(--accent);"></div>
     </div>
 
     <!-- Product Analysis Card -->
@@ -424,6 +427,7 @@
         <button class="btn btn-secondary" onclick="saveCurrentProject()">Save Project</button>
         <button class="btn" onclick="exportCurrentSlide('png')">Export PNG</button>
         <button class="btn" onclick="exportCurrentSlide('jpg')">Export JPG</button>
+        <button class="btn" onclick="exportPdf()">Export PDF</button>
         <button class="btn" onclick="exportZip()">Export ZIP</button>
       </div>
     </div>
@@ -658,16 +662,36 @@ function renderSlideList() {
   currentProject.slides.forEach((slide, idx) => {
     const item = document.createElement('div');
     item.className = `slide-item ${idx === activeSlideIndex ? 'active' : ''}`;
-    item.onclick = () => selectSlide(idx);
+    item.onclick = (e) => {
+      if (e.target.tagName === 'BUTTON') return;
+      selectSlide(idx);
+    };
     item.innerHTML = `
-      <div class="slide-num">${slide.index}</div>
-      <div>
+      <div class="slide-num">${idx + 1}</div>
+      <div style="flex:1;">
         <div style="font-weight:700;font-size:14px;">${escapeHtml(slide.headline)}</div>
         <div style="font-size:12px;color:var(--text-muted);">${escapeHtml(slide.role)}</div>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="moveSlide(${idx}, -1)">▲</button>
+        <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="moveSlide(${idx}, 1)">▼</button>
       </div>
     `;
     list.appendChild(item);
   });
+}
+
+function moveSlide(idx, delta) {
+  if (!currentProject) return;
+  const target = idx + delta;
+  if (target < 0 || target >= currentProject.slides.length) return;
+  const temp = currentProject.slides[idx];
+  currentProject.slides[idx] = currentProject.slides[target];
+  currentProject.slides[target] = temp;
+  currentProject.slides.forEach((s, i) => s.index = i + 1);
+  activeSlideIndex = target;
+  renderSlideList();
+  renderPreview();
 }
 
 function selectSlide(idx) {
@@ -834,6 +858,27 @@ function exportCurrentSlide(format) {
   };
 
   img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+}
+
+async function exportPdf() {
+  if (!currentProject) return;
+  try {
+    const res = await fetch('/api/rpd/export/pdf', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        productTitle: currentProject.title,
+        slides: currentProject.slides,
+        template: currentProject.template
+      })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      alert(`PDF export generated: ${data.pdfFilename}`);
+    }
+  } catch {
+    alert('Failed to export PDF');
+  }
 }
 
 function exportZip() {

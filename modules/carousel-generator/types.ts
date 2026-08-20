@@ -11,7 +11,10 @@ export type CarouselTemplateId =
   | 'FLORAL_BOTANICAL'
   | 'TRENDY_COLLAGE'
   | 'PRODUCT_SPOTLIGHT'
-  | 'INDIAN_ETHNIC_EDITORIAL';
+  | 'INDIAN_ETHNIC_EDITORIAL'
+  | 'HIGH_FASHION_SPLIT'
+  | 'MINIMAL_CATALOG'
+  | 'MAGAZINE_COVER';
 
 export type CompositionMode =
   | 'HERO'

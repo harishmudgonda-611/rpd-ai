@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { extractProduct } from './extractor.js';
 
-import { fetchAndExtractProduct } from './extractor.js';
+import { fetchAndExtractProduct, fetchAndExtractProductsBatch } from './extractor.js';
 const html = `<!doctype html><html><head>
 <link rel="canonical" href="https://shop.test/p/kurti" />
 <meta property="og:title" content="Blue Printed Kurti Set" />
@@ -94,6 +94,27 @@ test('rejects Meesho-style access-blocked HTML instead of treating it as product
       (error: any) =>
         error?.code === 'UPSTREAM_ACCESS_BLOCKED',
     );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('fetchAndExtractProductsBatch processes single or array of URLs', async () => {
+  const sourceUrl = 'https://shop.test/p/kurti';
+  const response = {
+    ok: true,
+    status: 200,
+    url: sourceUrl,
+    text: async () => html,
+  } as unknown as Response;
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => response) as unknown as typeof fetch;
+
+  try {
+    const products = await fetchAndExtractProductsBatch([sourceUrl]);
+    assert.equal(products.length, 1);
+    assert.equal(products[0].title.value, 'Blue Printed Kurti Set');
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -14,6 +14,7 @@ const json = (res: any, status: number, body: unknown) => {
 
 export function createRPDServer() {
   return createServer(async (req, res) => {
+  try {
   if (req.method === 'OPTIONS') return json(res, 204, {});
 
   if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
@@ -169,6 +170,25 @@ export function createRPDServer() {
     }
   }
 
+  // PDF Carousel export endpoint
+  if (req.method === 'POST' && req.url === '/api/rpd/export/pdf') {
+    try {
+      let raw = '';
+      for await (const chunk of req) raw += chunk;
+      const body = JSON.parse(raw || '{}');
+      const render = await renderRPD(body);
+
+      return json(res, 200, {
+        ok: true,
+        pdfFilename: `rpd-carousel-${Date.now()}.pdf`,
+        pageCount: render.slideCount,
+        assets: render.assets
+      });
+    } catch (error) {
+      return json(res, 500, { ok: false, error: 'Failed to prepare PDF export' });
+    }
+  }
+
   // Multi-slide ZIP export endpoint
   if (req.method === 'POST' && req.url === '/api/rpd/export/zip') {
     try {
@@ -281,21 +301,32 @@ export function createRPDServer() {
   }
 
   return json(res, 404, { ok: false, error: 'Not found' });
+  } catch (error: any) {
+    return json(res, 500, { ok: false, error: error?.message || 'Internal Server Error' });
+  }
 });
 }
 
-export function startServer(port = Number(process.env.PORT ?? 8787), host = process.env.HOST ?? '127.0.0.1') {
+export function startServer(initialPort = Number(process.env.PORT ?? 8787), host = process.env.HOST ?? '127.0.0.1') {
+  let currentPort = initialPort;
   const app = createRPDServer();
 
   app.on('error', (err: any) => {
     if (err.code === 'EADDRINUSE') {
-      console.error(`Port ${port} is already in use. Clean up running process or choose a free port with PORT environment variable.`);
-      process.exit(1);
+      if (process.env.STRICT_PORT === 'true') {
+        console.error(`Port ${currentPort} is already in use (STRICT_PORT set). Exiting.`);
+        process.exit(1);
+      }
+      console.warn(`Port ${currentPort} in use, retrying on port ${currentPort + 1}...`);
+      currentPort += 1;
+      app.listen(currentPort, host);
+    } else {
+      console.error('Server error:', err);
     }
   });
 
-  const serverInstance = app.listen(port, host, () => {
-    console.log(`RPD Product Intelligence listening on http://${host}:${port}`);
+  const serverInstance = app.listen(currentPort, host, () => {
+    console.log(`RPD Product Intelligence listening on http://${host}:${currentPort}`);
   });
 
   const shutdown = () => {

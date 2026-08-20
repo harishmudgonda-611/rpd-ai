@@ -4,6 +4,31 @@ const A:Record<string,string>={blk:'black',wht:'white',wine:'maroon',burgundy:'m
 
 const clean=(x:unknown)=>typeof x==='string'?x.replace(/\s+/g,' ').trim():'';
 
+const FASHION_COLORS = [
+  'black', 'white', 'pink', 'red', 'blue', 'green', 'yellow', 'purple', 'lavender',
+  'maroon', 'beige', 'olive', 'charcoal', 'coral', 'teal', 'gold', 'silver',
+  'indigo', 'cyan', 'orange', 'turquoise', 'peach', 'magenta', 'mint', 'navy',
+  'grey', 'gray', 'brown', 'rust', 'mustard', 'fuchsia', 'burgundy', 'wine', 'cream'
+];
+
+export function inferColorFromText(text: string): ColorEvidence | null {
+  if (!text) return null;
+  const cleanText = text.toLowerCase();
+  for (const color of FASHION_COLORS) {
+    const regex = new RegExp(`\\b${color}\\b`, 'i');
+    if (regex.test(cleanText)) {
+      const normalized = normalizeColorName(color);
+      return {
+        name: color.charAt(0).toUpperCase() + color.slice(1),
+        normalizedName: normalized || color,
+        confidence: 0.85,
+        source: 'inferred',
+      };
+    }
+  }
+  return null;
+}
+
 export function isTechnicalColorValue(value: string): boolean {
   if (!value) return true;
   const v = value.trim();

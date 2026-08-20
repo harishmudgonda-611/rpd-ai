@@ -13,6 +13,27 @@ export type RevenueMetrics = {
   revenuePer1000Views: number;
 };
 
+export interface ProductAttribution {
+  productId: string;
+  affiliateTag: string;
+  shortUrl: string;
+  slideIndex: number;
+}
+
+export function attributeProductClick(
+  productId: string,
+  affiliateNetwork: string,
+  slideIndex = 1,
+): ProductAttribution {
+  const tag = `${affiliateNetwork.toLowerCase()}-rpd-affiliate`;
+  return {
+    productId,
+    affiliateTag: tag,
+    shortUrl: `https://rpd.link/${tag}/${productId}`,
+    slideIndex,
+  };
+}
+
 export function calculateRevenueMetrics(
   perfs: ContentPerformance[] = [],
   clicks: AffiliateClick[] = [],

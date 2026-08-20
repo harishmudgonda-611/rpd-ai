@@ -3,3 +3,13 @@ const input={productTitle:'Georgette Embroidery Kurti',price:'₹466',mrp:'₹99
 test('creates valid 1080x1350 carousel',()=>{const d=generateCarousel(input);const v=validateCarousel(d);assert.equal(d.width,1080);assert.equal(d.height,1350);assert.equal(d.slides.length,6);assert.equal(v.valid,true);});
 test('renders deterministic slide HTML',()=>{const d=generateCarousel(input);const html=renderSlideHtml(d,0);assert.ok(html.includes('1080px'));assert.ok(html.includes('₹466'));});
 test('rejects invalid slide count',()=>{const d=generateCarousel({...input,content:{...input.content,slides:input.content.slides.slice(0,3)}});assert.equal(validateCarousel(d).valid,false);});
+
+test('supports new template options HIGH_FASHION_SPLIT and MAGAZINE_COVER', ()=>{
+  const d1 = generateCarousel({ ...input, template: 'HIGH_FASHION_SPLIT' });
+  assert.equal(d1.template, 'HIGH_FASHION_SPLIT');
+  assert.equal(validateCarousel(d1).valid, true);
+
+  const d2 = generateCarousel({ ...input, template: 'MAGAZINE_COVER' });
+  assert.equal(d2.template, 'MAGAZINE_COVER');
+  assert.equal(validateCarousel(d2).valid, true);
+});

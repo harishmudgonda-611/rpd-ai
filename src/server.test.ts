@@ -87,6 +87,29 @@ test('GET /api/projects and POST /api/projects manages persistent projects', asy
   }
 });
 
+test('POST /api/rpd/export/pdf returns pdf metadata manifest', async () => {
+  const app = createRPDServer();
+  const { port, close } = await listenServer(app);
+
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/api/rpd/export/pdf`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        productTitle: 'Pdf Export Product',
+        slides: [{ index: 1, role: 'hero', headline: 'Pdf Slide 1' }]
+      }),
+    });
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.equal(data.ok, true);
+    assert.equal(data.pageCount, 1);
+    assert.ok(data.pdfFilename.endsWith('.pdf'));
+  } finally {
+    await close();
+  }
+});
+
 test('POST /api/rpd/export/zip returns zip metadata manifest and slide assets', async () => {
   const app = createRPDServer();
   const { port, close } = await listenServer(app);
