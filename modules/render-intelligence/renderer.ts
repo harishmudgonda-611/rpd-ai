@@ -57,11 +57,24 @@ function background(template: string | null | undefined, index: number) {
     return index % 2 ? '#FFF1F6' : '#FF4F87';
   }
 
-  if (template === 'rpd-lookbook') return '#EFEFEA';
-  if (template === 'rpd-colour-grid') return '#F4F5F7';
-  if (template === 'rpd-minimal') return '#FFFFFF';
+  if (template === 'rpd-lookbook' || template === 'SOFT_FEMININE') return '#FDF8F5';
+  if (template === 'rpd-colour-grid' || template === 'TRENDY_COLLAGE') return '#F4F5F7';
+  if (template === 'rpd-minimal' || template === 'LUXURY_MINIMAL') return '#FFFFFF';
+  if (template === 'FLORAL_BOTANICAL') return '#F3F7F2';
+  if (template === 'INDIAN_ETHNIC_EDITORIAL') return '#FAF4ED';
+  if (template === 'EDITORIAL_MAGAZINE' || template === 'MODERN_FASHION') return '#F7F4EF';
 
   return '#F7F3EE';
+}
+
+function renderBotanicalDecoration() {
+  return `
+    <g opacity="0.18">
+      <path d="M 900 120 C 950 160 980 220 940 280 C 900 320 850 280 880 220 Z" fill="none" stroke="#222222" stroke-width="2"/>
+      <path d="M 940 280 C 980 340 1010 400 960 450" fill="none" stroke="#222222" stroke-width="2"/>
+      <circle cx="920" cy="180" r="14" fill="#222222" opacity="0.2"/>
+    </g>
+  `;
 }
 
 function foreground(template: string | null | undefined) {
@@ -121,12 +134,15 @@ function renderSvg(
 
   <rect width="1080" height="1350" fill="${bg}"/>
 
+  ${renderBotanicalDecoration()}
+
   <text x="100" y="120"
-        font-family="Arial,sans-serif"
+        font-family="Georgia, 'Times New Roman', serif"
         font-size="34"
         font-weight="700"
+        letter-spacing="2"
         fill="${fg}">
-    RPD AI
+    RPD EDITORIAL
   </text>
 
   <text x="100" y="190"

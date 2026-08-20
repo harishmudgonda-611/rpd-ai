@@ -1,5 +1,9 @@
 import type {CarouselDocument,CarouselInput,CarouselSlide,CarouselTemplateId} from './types.js';
-const templates:CarouselTemplateId[]=['rpd-editorial','rpd-pink-deal','rpd-minimal','rpd-lookbook','rpd-colour-grid'];
+const templates:CarouselTemplateId[]=[
+  'rpd-editorial','rpd-pink-deal','rpd-minimal','rpd-lookbook','rpd-colour-grid',
+  'EDITORIAL_MAGAZINE','SOFT_FEMININE','MODERN_FASHION','LUXURY_MINIMAL',
+  'FLORAL_BOTANICAL','TRENDY_COLLAGE','PRODUCT_SPOTLIGHT','INDIAN_ETHNIC_EDITORIAL'
+];
 const esc=(s:string)=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const bg=(t:CarouselTemplateId,i:number)=>t==='rpd-pink-deal'?(i%2?'#FFF1F6':'#FF4F87'):t==='rpd-editorial'?'#F7F3EE':t==='rpd-lookbook'?'#EFEFEA':t==='rpd-colour-grid'?'#F4F5F7':'#FFFFFF';
 const text=(role:string)=>role==='hook'||role==='cta'?'#111111':'#222222';

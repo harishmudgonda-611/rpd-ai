@@ -51,9 +51,20 @@ export type AssetSelectionRequest = {
   requiredBackground?: ModelBackground | null;
 };
 
+export type CampaignModelProfile = {
+  modelId: string;
+  appearanceProfile: string;
+  stylingProfile: string;
+  poseProfile: string;
+  sceneProfile: string;
+  productFidelityConfidence: number;
+  productFidelityPreserved: boolean;
+};
+
 export type AssetSelectionResult = {
   asset: ModelAsset | null;
   score: number;
   reasons: string[];
   warnings: string[];
+  modelProfile?: CampaignModelProfile;
 };

@@ -1,4 +1,25 @@
-export type CarouselTemplateId = 'rpd-editorial'|'rpd-pink-deal'|'rpd-minimal'|'rpd-lookbook'|'rpd-colour-grid';
+export type CarouselTemplateId =
+  | 'rpd-editorial'
+  | 'rpd-pink-deal'
+  | 'rpd-minimal'
+  | 'rpd-lookbook'
+  | 'rpd-colour-grid'
+  | 'EDITORIAL_MAGAZINE'
+  | 'SOFT_FEMININE'
+  | 'MODERN_FASHION'
+  | 'LUXURY_MINIMAL'
+  | 'FLORAL_BOTANICAL'
+  | 'TRENDY_COLLAGE'
+  | 'PRODUCT_SPOTLIGHT'
+  | 'INDIAN_ETHNIC_EDITORIAL';
+
+export type CompositionMode =
+  | 'HERO'
+  | 'EDITORIAL_SPLIT'
+  | 'TWO_VIEW'
+  | 'COLLAGE'
+  | 'DETAIL_GRID'
+  | 'MAGAZINE_COVER';
 export type SlideRole = 'hook'|'hero'|'benefits'|'colours'|'details'|'price'|'cta';
 export type CarouselAsset = { type:'image'|'text'; src?:string; text?:string; alt?:string };
 export type CarouselSlide = { index:number; role:SlideRole; background:string; assets:CarouselAsset[] };
