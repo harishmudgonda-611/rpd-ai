@@ -308,6 +308,25 @@ export function decideCreative(
     ).toFixed(4),
   );
 
+  const creativeScore = Math.round(confidence * 100);
+  const emotionalTrigger = selected.angle === 'price' || selected.angle === 'value'
+    ? 'FOMO & Budget Savings'
+    : selected.angle === 'trend' || selected.angle === 'style'
+      ? 'Fashion Discovery & Aesthetic Pride'
+      : 'Elegance & Style Confidence';
+
+  const audienceAngle = category(request)
+    ? `Budget-conscious ${category(request)} fashion shoppers`
+    : 'Fashion affiliate audience';
+
+  const presentationStrategy = hasPriceEvidence(request)
+    ? 'Price-first verification with visual callouts'
+    : 'Visual showcase with design detail emphasis';
+
+  const urgencyStrategy = hasPriceEvidence(request)
+    ? 'Limited time discount verification'
+    : 'Trending style alert';
+
   return {
     angle: selected.angle,
     objective,
@@ -315,6 +334,11 @@ export function decideCreative(
     template,
     score: selected.score,
     confidence,
+    creativeScore,
+    emotionalTrigger,
+    audienceAngle,
+    presentationStrategy,
+    urgencyStrategy,
     reasons: [
       ...selected.reasons,
       `objective:${objective}`,

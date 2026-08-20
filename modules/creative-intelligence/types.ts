@@ -22,6 +22,11 @@ export type CreativeDecision = {
   template: CarouselTemplateId;
   score: number;
   confidence: number;
+  creativeScore: number;
+  emotionalTrigger: string;
+  audienceAngle: string;
+  presentationStrategy: string;
+  urgencyStrategy: string;
   reasons: string[];
   signals: CreativeSignal[];
 };

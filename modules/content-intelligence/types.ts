@@ -35,10 +35,28 @@ export type CarouselSlideCopy = {
   emphasis?: string[];
 };
 
+export type ReelScenePlan = {
+  sceneNumber: number;
+  durationSeconds: number;
+  visualConcept: string;
+  onScreenText: string;
+  voiceoverScript: string;
+};
+
+export type VideoScriptPlan = {
+  format: 'reel' | 'short';
+  aspectRatio: '9:16';
+  durationSeconds: number;
+  openingHook: string;
+  scenes: ReelScenePlan[];
+  audioBrief: string;
+};
+
 export type ContentPackage = {
   hook: string;
   alternativeHooks: string[];
   carousel: CarouselSlideCopy[];
+  videoScript?: VideoScriptPlan;
   caption: string;
   cta: string;
   hashtags: string[];

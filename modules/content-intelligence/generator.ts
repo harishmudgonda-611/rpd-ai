@@ -38,9 +38,24 @@ export function generateContent(r:ContentRequest):ContentPackage{
  candidates.push(slide(8,'cta',ctaText(cta)));
 
  const slides=candidates.slice(0,n).map((s,i)=>({...s,slide:i+1}));
+
+ const videoScript = {
+   format: 'reel' as const,
+   aspectRatio: '9:16' as const,
+   durationSeconds: 15,
+   openingHook: hook,
+   scenes: [
+     { sceneNumber: 1, durationSeconds: 3, visualConcept: 'Fast hook zoom on primary product image', onScreenText: hook, voiceoverScript: hook },
+     { sceneNumber: 2, durationSeconds: 4, visualConcept: 'Smooth pan over fabric and product details', onScreenText: title(r), voiceoverScript: `Check out this ${title(r)}.` },
+     { sceneNumber: 3, durationSeconds: 4, visualConcept: 'Price callout overlay with verified discount badge', onScreenText: p.price != null ? `Only ${money(p.price, p.currency ?? 'INR')}` : 'Verified price find', voiceoverScript: p.price != null ? `Available now for ${money(p.price, p.currency ?? 'INR')}.` : 'Tap to check current price.' },
+     { sceneNumber: 4, durationSeconds: 4, visualConcept: 'CTA card with affiliate link arrow', onScreenText: ctaText(cta), voiceoverScript: `${ctaText(cta)}.` }
+   ],
+   audioBrief: 'Upbeat trending lo-fi fashion beat with soft drop on hook'
+ };
+
  const caption=`${hook}\n\n${title(r)}${p.price!=null?` • ${money(p.price,p.currency||'INR')}`:''}\n\n${p.description?clean(p.description).slice(0,240):'A versatile fashion find to add to your wardrobe.'}\n\n${ctaText(cta)}.`;
  const warnings:string[]=[]; if(!p.price)warnings.push('Price unavailable; price claims were not invented.'); if(!p.colors?.length)warnings.push('Colour data unavailable; colour slide should be adapted by the carousel renderer.');
- return {hook,alternativeHooks:alternatives(r),carousel:slides.slice(0,n),caption,cta:ctaText(cta),hashtags:hashtags(r),keywords:[category(r),'fashion','budget fashion',...(p.colors||[]).slice(0,5)],metadata:{angle,voice,locale,generatedBy:'rpd-content-intelligence-v1'},warnings};
+ return {hook,alternativeHooks:alternatives(r),carousel:slides.slice(0,n),videoScript,caption,cta:ctaText(cta),hashtags:hashtags(r),keywords:[category(r),'fashion','budget fashion',...(p.colors||[]).slice(0,5)],metadata:{angle,voice,locale,generatedBy:'rpd-content-intelligence-v1'},warnings};
 }
 
 export type LLMProvider={name:string;generate:(system:string,user:string)=>Promise<string>};

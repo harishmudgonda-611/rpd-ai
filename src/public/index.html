@@ -303,9 +303,10 @@
     <span class="logo-badge">PROD</span>
   </a>
   <div class="nav-tabs">
-    <button class="tab-btn active" id="tab-new" onclick="showTab('new')">New Carousel</button>
+    <button class="tab-btn active" id="tab-new" onclick="showTab('new')">New Creative</button>
     <button class="tab-btn" id="tab-editor" onclick="showTab('editor')">Carousel Editor</button>
     <button class="tab-btn" id="tab-projects" onclick="showTab('projects')">Saved Projects</button>
+    <button class="tab-btn" id="tab-analytics" onclick="showTab('analytics')">BI & Revenue</button>
   </div>
 </header>
 
@@ -364,6 +365,40 @@
         <div class="template-card" id="tpl-rpd-colour-grid" onclick="selectTemplate('rpd-colour-grid')">
           <h4>Colour Grid</h4>
           <p>Structured grid presentation for variants and colors</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW 4: BI & REVENUE ANALYTICS -->
+  <div id="view-analytics" class="hidden">
+    <div class="card">
+      <h2>Revenue Intelligence & Analytics</h2>
+      <div class="grid-4" style="margin-bottom:20px;">
+        <div class="stat-box"><div class="stat-label">Total Views</div><div class="stat-value" id="biViews">0</div></div>
+        <div class="stat-box"><div class="stat-label">Total Clicks</div><div class="stat-value" id="biClicks">0</div></div>
+        <div class="stat-box"><div class="stat-label">Orders</div><div class="stat-value" id="biOrders">0</div></div>
+        <div class="stat-box"><div class="stat-label">Total Commission</div><div class="stat-value" id="biCommission">₹0</div></div>
+      </div>
+      <div class="grid-3">
+        <div class="stat-box"><div class="stat-label">Conversion Rate</div><div class="stat-value" id="biConv">0%</div></div>
+        <div class="stat-box"><div class="stat-label">EPC (Earnings Per Click)</div><div class="stat-value" id="biEpc">₹0</div></div>
+        <div class="stat-box"><div class="stat-label">Rev / 1k Views</div><div class="stat-value" id="biRpm">₹0</div></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h2>Simulate Affiliate Action</h2>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <button class="btn btn-secondary" onclick="simulateClick()">Log Test Affiliate Click</button>
+          <button class="btn" onclick="simulateOrder()">Log Test Affiliate Order (₹298)</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Learning Engine Recommendations</h2>
+        <div id="learningList">
+          <p style="color:var(--text-muted);">Loading insights...</p>
         </div>
       </div>
     </div>
@@ -450,16 +485,69 @@ let selectedTemplate = 'rpd-editorial';
 let activeSlideIndex = 0;
 
 function showTab(tabName) {
-  ['new', 'editor', 'projects'].forEach(t => {
-    document.getElementById(`view-${t}`).classList.add('hidden');
-    document.getElementById(`tab-${t}`).classList.remove('active');
+  ['new', 'editor', 'projects', 'analytics'].forEach(t => {
+    const v = document.getElementById(`view-${t}`);
+    const b = document.getElementById(`tab-${t}`);
+    if (v) v.classList.add('hidden');
+    if (b) b.classList.remove('active');
   });
-  document.getElementById(`view-${tabName}`).classList.remove('hidden');
-  document.getElementById(`tab-${tabName}`).classList.add('active');
+  document.getElementById(`view-${tabName}`)?.classList.remove('hidden');
+  document.getElementById(`tab-${tabName}`)?.classList.add('active');
 
   if (tabName === 'projects') {
     loadProjects();
+  } else if (tabName === 'analytics') {
+    loadAnalytics();
   }
+}
+
+async function loadAnalytics() {
+  try {
+    const res = await fetch('/api/analytics/summary');
+    const data = await res.json();
+    if (data.ok) {
+      const rev = data.revenue;
+      document.getElementById('biViews').textContent = rev.totalViews.toLocaleString();
+      document.getElementById('biClicks').textContent = rev.totalClicks.toLocaleString();
+      document.getElementById('biOrders').textContent = rev.totalOrders.toLocaleString();
+      document.getElementById('biCommission').textContent = `₹${rev.totalCommission.toLocaleString()}`;
+      document.getElementById('biConv').textContent = `${rev.conversionRatePercent}%`;
+      document.getElementById('biEpc').textContent = `₹${rev.epc}`;
+      document.getElementById('biRpm').textContent = `₹${rev.revenuePer1000Views}`;
+
+      const list = document.getElementById('learningList');
+      if (data.recommendations?.recommendations?.length) {
+        list.innerHTML = data.recommendations.recommendations.map(r => `
+          <div style="background:var(--card-bg);padding:12px;border-radius:8px;margin-bottom:8px;">
+            <div style="font-weight:700;color:var(--primary);">${r.type.toUpperCase()}: ${escapeHtml(r.recommendation)}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${escapeHtml(r.evidence)}</div>
+          </div>
+        `).join('');
+      } else {
+        list.innerHTML = '<p style="color:var(--text-muted);">No learning recommendations yet.</p>';
+      }
+    }
+  } catch {
+    // Ignore analytics error
+  }
+}
+
+async function simulateClick() {
+  await fetch('/api/affiliate/clicks', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ contentId: 'sim_content', productId: 'p123', platform: 'instagram' })
+  });
+  loadAnalytics();
+}
+
+async function simulateOrder() {
+  await fetch('/api/affiliate/orders', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ contentId: 'sim_content', productId: 'p123', orderValue: 298, commission: 29.8 })
+  });
+  loadAnalytics();
 }
 
 function selectTemplate(tpl) {

@@ -3,6 +3,9 @@ import { fetchAndExtractProduct } from './extractor.js';
 import { generateRPDFromUrl } from '../modules/rpd-runtime/runtime.js';
 import { listProjects, saveProject, getProject, deleteProject } from './projects.js';
 import { renderRPD } from '../modules/render-intelligence/renderer.js';
+import { logViews, getPerformance, logClick, getClicks, logOrder, getOrders } from './business-intelligence.js';
+import { calculateRevenueMetrics } from '../modules/revenue-intelligence/engine.js';
+import { generateLearningRecommendations } from '../modules/learning-engine/engine.js';
 
 const json = (res: any, status: number, body: unknown) => {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' });
@@ -163,6 +166,56 @@ export function createRPDServer() {
       return json(res, 200, { ok: true, render });
     } catch (error) {
       return json(res, 500, { ok: false, error: 'Failed to render RPD slides' });
+    }
+  }
+
+  // Analytics & Business Intelligence Endpoints
+  if (req.method === 'POST' && req.url === '/api/analytics/views') {
+    try {
+      let raw = '';
+      for await (const chunk of req) raw += chunk;
+      const body = JSON.parse(raw || '{}');
+      const perf = await logViews(body);
+      return json(res, 200, { ok: true, perf });
+    } catch (error) {
+      return json(res, 500, { ok: false, error: 'Failed to log view analytics' });
+    }
+  }
+
+  if (req.method === 'POST' && req.url === '/api/affiliate/clicks') {
+    try {
+      let raw = '';
+      for await (const chunk of req) raw += chunk;
+      const body = JSON.parse(raw || '{}');
+      const click = await logClick(body);
+      return json(res, 200, { ok: true, click });
+    } catch (error) {
+      return json(res, 500, { ok: false, error: 'Failed to log affiliate click' });
+    }
+  }
+
+  if (req.method === 'POST' && req.url === '/api/affiliate/orders') {
+    try {
+      let raw = '';
+      for await (const chunk of req) raw += chunk;
+      const body = JSON.parse(raw || '{}');
+      const order = await logOrder(body);
+      return json(res, 200, { ok: true, order });
+    } catch (error) {
+      return json(res, 500, { ok: false, error: 'Failed to log affiliate order' });
+    }
+  }
+
+  if (req.method === 'GET' && req.url === '/api/analytics/summary') {
+    try {
+      const perfs = await getPerformance();
+      const clicks = await getClicks();
+      const orders = await getOrders();
+      const revenue = calculateRevenueMetrics(perfs, clicks, orders);
+      const recommendations = generateLearningRecommendations(perfs, clicks, orders);
+      return json(res, 200, { ok: true, revenue, recommendations, counts: { views: perfs.length, clicks: clicks.length, orders: orders.length } });
+    } catch (error) {
+      return json(res, 500, { ok: false, error: 'Failed to retrieve analytics summary' });
     }
   }
 
