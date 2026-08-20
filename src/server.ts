@@ -182,6 +182,18 @@ export function createRPDServer() {
     }
   }
 
+  if (req.method === 'GET' && req.url?.startsWith('/api/analytics/views')) {
+    try {
+      const urlObj = new URL(req.url, 'http://localhost');
+      const content_id = urlObj.searchParams.get('content_id') || undefined;
+      const platform = urlObj.searchParams.get('platform') || undefined;
+      const views = await getPerformance({ content_id, platform });
+      return json(res, 200, { ok: true, views });
+    } catch (error) {
+      return json(res, 500, { ok: false, error: 'Failed to fetch view analytics' });
+    }
+  }
+
   if (req.method === 'POST' && req.url === '/api/affiliate/clicks') {
     try {
       let raw = '';
@@ -194,6 +206,20 @@ export function createRPDServer() {
     }
   }
 
+  if (req.method === 'GET' && req.url?.startsWith('/api/affiliate/clicks')) {
+    try {
+      const urlObj = new URL(req.url, 'http://localhost');
+      const content_id = urlObj.searchParams.get('content_id') || undefined;
+      const product_id = urlObj.searchParams.get('product_id') || undefined;
+      const platform = urlObj.searchParams.get('platform') || undefined;
+      const affiliate_network = urlObj.searchParams.get('affiliate_network') || undefined;
+      const clicks = await getClicks({ content_id, product_id, platform, affiliate_network });
+      return json(res, 200, { ok: true, clicks });
+    } catch (error) {
+      return json(res, 500, { ok: false, error: 'Failed to fetch affiliate clicks' });
+    }
+  }
+
   if (req.method === 'POST' && req.url === '/api/affiliate/orders') {
     try {
       let raw = '';
@@ -203,6 +229,21 @@ export function createRPDServer() {
       return json(res, 200, { ok: true, order });
     } catch (error) {
       return json(res, 500, { ok: false, error: 'Failed to log affiliate order' });
+    }
+  }
+
+  if (req.method === 'GET' && req.url?.startsWith('/api/affiliate/orders')) {
+    try {
+      const urlObj = new URL(req.url, 'http://localhost');
+      const content_id = urlObj.searchParams.get('content_id') || undefined;
+      const product_id = urlObj.searchParams.get('product_id') || undefined;
+      const platform = urlObj.searchParams.get('platform') || undefined;
+      const affiliate_network = urlObj.searchParams.get('affiliate_network') || undefined;
+      const status = urlObj.searchParams.get('status') || undefined;
+      const orders = await getOrders({ content_id, product_id, platform, affiliate_network, status });
+      return json(res, 200, { ok: true, orders });
+    } catch (error) {
+      return json(res, 500, { ok: false, error: 'Failed to fetch affiliate orders' });
     }
   }
 

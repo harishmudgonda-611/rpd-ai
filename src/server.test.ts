@@ -111,6 +111,66 @@ test('POST /api/rpd/render renders slides to output directory', async () => {
   }
 });
 
+test('GET /api/analytics/views, GET /api/affiliate/clicks, and GET /api/affiliate/orders support query filtering and idempotent ingestion', async () => {
+  const app = createRPDServer();
+  const { port, close } = await listenServer(app);
+  const testId = `c_filt_${Date.now()}`;
+
+  try {
+    // 1. Post view metric
+    const postView = await fetch(`http://127.0.0.1:${port}/api/analytics/views`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ content_id: testId, platform: 'instagram', views: 500 })
+    });
+    assert.equal(postView.status, 200);
+
+    const getView = await fetch(`http://127.0.0.1:${port}/api/analytics/views?content_id=${testId}`);
+    assert.equal(getView.status, 200);
+    const viewData = await getView.json();
+    assert.equal(viewData.views[0].views, 500);
+
+    // 2. Post click metric
+    const clickId = `click_${testId}`;
+    const postClick = await fetch(`http://127.0.0.1:${port}/api/affiliate/clicks`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ click_id: clickId, content_id: testId, product_id: 'p_test1', affiliate_network: 'myntra' })
+    });
+    assert.equal(postClick.status, 200);
+
+    const getClick = await fetch(`http://127.0.0.1:${port}/api/affiliate/clicks?content_id=${testId}`);
+    assert.equal(getClick.status, 200);
+    const clickData = await getClick.json();
+    assert.equal(clickData.clicks.length, 1);
+
+    // 3. Post order metric idempotently
+    const orderId = `ord_${testId}`;
+    const postOrder1 = await fetch(`http://127.0.0.1:${port}/api/affiliate/orders`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ order_id: orderId, content_id: testId, product_id: 'p_test1', order_value: 298, commission: 29.8, order_status: 'pending' })
+    });
+    assert.equal(postOrder1.status, 200);
+
+    // Re-ingest same order_id to update status to confirmed
+    const postOrder2 = await fetch(`http://127.0.0.1:${port}/api/affiliate/orders`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ order_id: orderId, content_id: testId, product_id: 'p_test1', order_value: 298, commission: 29.8, order_status: 'confirmed' })
+    });
+    assert.equal(postOrder2.status, 200);
+
+    const getOrder = await fetch(`http://127.0.0.1:${port}/api/affiliate/orders?content_id=${testId}`);
+    assert.equal(getOrder.status, 200);
+    const orderData = await getOrder.json();
+    assert.equal(orderData.orders.length, 1);
+    assert.equal(orderData.orders[0].orderStatus, 'confirmed');
+  } finally {
+    await close();
+  }
+});
+
 test('POST /api/rpd/generate handles end-to-end carousel generation request', async () => {
   // Create a mock product HTML server
   const mockProductHtml = `
