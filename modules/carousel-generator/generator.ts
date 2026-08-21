@@ -10,8 +10,38 @@ const bg=(t:CarouselTemplateId,i:number)=>t==='rpd-pink-deal'?(i%2?'#FFF1F6':'#F
 const text=(role:string)=>role==='hook'||role==='cta'?'#111111':'#222222';
 export function generateCarousel(input:CarouselInput):CarouselDocument{
  const template=input.template&&templates.includes(input.template)?input.template:'rpd-editorial';
- const slides:CarouselSlide[]=input.content.slides.map((s,i)=>({index:i+1,role:s.role,background:bg(template,i),assets:[{type:'text',text:s.headline},{type:'text',text:s.body||''},...(s.role==='hero'&&input.modelImage?[{type:'image' as const,src:input.modelImage,alt:input.productTitle}]:[]),...(s.role==='colours'?input.colours?.map(c=>({type:'text' as const,text:c}))||[]:[]),...(s.role==='price'&&input.price?[{type:'text' as const,text:input.price},{type:'text' as const,text:input.mrp||''},{type:'text' as const,text:input.discount||''}]:[])]}));
+ const slides:CarouselSlide[]=input.content.slides.map((s,i)=>({
+   index:i+1,
+   role:s.role,
+   background:bg(template,i),
+   hook: s.role==='hook'?s.headline:input.content.hook,
+   details: s.body||input.productTitle,
+   price: input.price||'',
+   cta: s.role==='cta'?s.headline:'Tap the link to shop',
+   product_id: 'prod-01',
+   image_asset_id: input.modelImage||'',
+   template_id: template,
+   assets:[
+     {type:'text',text:s.headline},
+     {type:'text',text:s.body||''},
+     ...(s.role==='hero'&&input.modelImage?[{type:'image' as const,src:input.modelImage,alt:input.productTitle}]:[]),
+     ...(s.role==='colours'?input.colours?.map(c=>({type:'text' as const,text:c}))||[]:[]),
+     ...(s.role==='price'&&input.price?[{type:'text' as const,text:input.price},{type:'text' as const,text:input.mrp||''},{type:'text' as const,text:input.discount||''}]:[])
+   ]
+ }));
  return{id:`rpd-carousel-${Date.now()}`,width:1080,height:1350,template,slides,sourceProductUrl:input.sourceProductUrl||null,generatedAt:new Date().toISOString(),exportTargets:['png','jpg','webp']};
 }
-export function renderSlideHtml(doc:CarouselDocument,slideIndex:number){const s=doc.slides[slideIndex];if(!s)throw new Error('Slide index out of range');const items=s.assets.map(a=>a.type==='image'?`<img src="${esc(a.src||'')}" alt="${esc(a.alt||'')}" />`:`<div class="text">${esc(a.text||'')}</div>`).join('');return `<!doctype html><html><head><meta charset="utf-8"><style>*{box-sizing:border-box}html,body{margin:0;width:${doc.width}px;height:${doc.height}px;overflow:hidden}body{background:${s.background};font-family:Arial,sans-serif;color:${text(s.role)};display:flex;align-items:center;justify-content:center}.slide{width:100%;height:100%;padding:80px;display:flex;flex-direction:column;justify-content:center;gap:28px}.text{font-weight:800;font-size:58px;line-height:1.04}.text:empty{display:none}img{max-width:100%;max-height:70%;object-fit:contain;border-radius:28px}</style></head><body><main class="slide">${items}</main></body></html>`;}
+export function renderSlideHtml(doc:CarouselDocument,slideIndex:number){
+  const s=doc.slides[slideIndex];
+  if(!s)throw new Error('Slide index out of range');
+  const headlineText = s.role === 'hook' ? (s.hook || s.assets[0]?.text || '') : (s.assets[0]?.text || '');
+  const bodyText = s.details || s.assets[1]?.text || '';
+  const ctaText = s.cta || 'Tap the link to shop';
+  const priceText = s.price ? `Price: ${s.price}` : '';
+
+  const imageAsset = s.assets.find(a => a.type === 'image');
+  const imgHtml = imageAsset?.src ? `<img src="${esc(imageAsset.src)}" alt="${esc(imageAsset.alt||'')}" />` : '';
+
+  return `<!doctype html><html><head><meta charset="utf-8"><style>*{box-sizing:border-box}html,body{margin:0;width:${doc.width}px;height:${doc.height}px;overflow:hidden}body{background:${s.background};font-family:Arial,sans-serif;color:${text(s.role)};display:flex;align-items:center;justify-content:center}.slide{width:100%;height:100%;padding:80px;display:flex;flex-direction:column;justify-content:center;gap:24px}.headline{font-weight:800;font-size:56px;line-height:1.04}.body{font-size:32px;color:#444}.price{font-size:36px;font-weight:700;color:#111}.cta{font-size:32px;font-weight:800;color:#ff4f87;margin-top:auto}.text:empty{display:none}img{max-width:100%;max-height:50%;object-fit:contain;border-radius:28px}</style></head><body><main class="slide"><div class="headline">${esc(headlineText)}</div>${imgHtml}<div class="body">${esc(bodyText)}</div>${priceText ? `<div class="price">${esc(priceText)}</div>` : ''}<div class="cta">${esc(ctaText)} &rarr;</div></main></body></html>`;
+}
 export function validateCarousel(doc:CarouselDocument){const errors:string[]=[];if(doc.width!==1080||doc.height!==1350)errors.push('Carousel must be 1080x1350');if(doc.slides.length<4||doc.slides.length>8)errors.push('Carousel must contain 4-8 slides');if(!templates.includes(doc.template))errors.push('Unknown RPD template');for(const s of doc.slides)if(!s.assets.length)errors.push(`Slide ${s.index} has no assets`);return{valid:errors.length===0,errors};}

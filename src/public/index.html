@@ -511,16 +511,20 @@
           <h2>Edit Slide <span id="currentSlideNum">1</span></h2>
           <div style="display:flex;flex-direction:column;gap:14px;">
             <div>
-              <label class="stat-label">Headline</label>
-              <input type="text" id="editHeadline" oninput="updateCurrentSlide()">
+              <label class="stat-label">Hook</label>
+              <input type="text" id="editHook" oninput="updateCurrentSlideField('hook')">
             </div>
             <div>
-              <label class="stat-label">Body Text</label>
-              <textarea id="editBody" rows="3" oninput="updateCurrentSlide()"></textarea>
+              <label class="stat-label">Details / Body Text</label>
+              <textarea id="editDetails" rows="3" oninput="updateCurrentSlideField('details')"></textarea>
             </div>
             <div>
-              <label class="stat-label">Price (Verified)</label>
-              <input type="text" id="editPrice" readonly style="opacity:0.8;">
+              <label class="stat-label">Price Tag</label>
+              <input type="text" id="editPrice" oninput="updateCurrentSlideField('price')">
+            </div>
+            <div>
+              <label class="stat-label">Call To Action (CTA)</label>
+              <input type="text" id="editCta" oninput="updateCurrentSlideField('cta')">
             </div>
             <div>
               <label class="stat-label">Template</label>
@@ -530,6 +534,8 @@
                 <option value="rpd-minimal">Minimal Premium</option>
                 <option value="rpd-lookbook">Lookbook</option>
                 <option value="rpd-colour-grid">Colour Grid</option>
+                <option value="HIGH_FASHION_SPLIT">High Fashion Split</option>
+                <option value="MAGAZINE_COVER">Magazine Cover</option>
               </select>
             </div>
           </div>
@@ -756,17 +762,29 @@ function selectSlide(idx) {
 
   const slide = currentProject.slides[idx];
   document.getElementById('currentSlideNum').textContent = slide.index;
-  document.getElementById('editHeadline').value = slide.headline;
-  document.getElementById('editBody').value = slide.body || '';
+  document.getElementById('editHook').value = slide.hook || slide.headline || '';
+  document.getElementById('editDetails').value = slide.details || slide.body || '';
+  document.getElementById('editPrice').value = slide.price || (currentProject.product?.price?.value ? `₹${currentProject.product.price.value}` : '');
+  document.getElementById('editCta').value = slide.cta || 'Tap the link to shop';
 
   renderPreview();
 }
 
-function updateCurrentSlide() {
+function updateCurrentSlideField(field) {
   if (!currentProject) return;
   const slide = currentProject.slides[activeSlideIndex];
-  slide.headline = document.getElementById('editHeadline').value;
-  slide.body = document.getElementById('editBody').value;
+
+  if (field === 'hook') {
+    slide.hook = document.getElementById('editHook').value;
+    slide.headline = slide.hook;
+  } else if (field === 'details') {
+    slide.details = document.getElementById('editDetails').value;
+    slide.body = slide.details;
+  } else if (field === 'price') {
+    slide.price = document.getElementById('editPrice').value;
+  } else if (field === 'cta') {
+    slide.cta = document.getElementById('editCta').value;
+  }
 
   renderSlideList();
   renderPreview();

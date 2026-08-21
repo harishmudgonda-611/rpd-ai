@@ -1,3 +1,10 @@
+export type ProductAssetCategory =
+  | 'SOURCE_PRODUCT_ASSET'
+  | 'GENERATED_MODEL_ASSET'
+  | 'COMPOSITED_PRODUCT_MODEL_ASSET'
+  | 'BACKGROUND_ASSET'
+  | 'FINAL_RENDER_ASSET';
+
 export type ProductAssetType =
   | 'product'
   | 'model'
@@ -17,6 +24,12 @@ export type ProductAsset = {
   url: string;
   type: ProductAssetType;
   role: ProductAssetRole;
+  category?: ProductAssetCategory;
+  product_id?: string;
+  asset_id?: string;
+  generation_id?: string;
+  creative_id?: string;
+  slide_id?: string;
   width?: number | null;
   height?: number | null;
   score: number;

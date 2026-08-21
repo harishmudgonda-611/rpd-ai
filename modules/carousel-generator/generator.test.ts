@@ -13,3 +13,19 @@ test('supports new template options HIGH_FASHION_SPLIT and MAGAZINE_COVER', ()=>
   assert.equal(d2.template, 'MAGAZINE_COVER');
   assert.equal(validateCarousel(d2).valid, true);
 });
+
+test('slide editing field isolation regression test', () => {
+  const d = generateCarousel(input);
+  const slide = d.slides[5]; // CTA slide
+
+  // 1. Changing CTA modifies ONLY CTA
+  slide.cta = 'Click link in bio to buy';
+  assert.equal(slide.cta, 'Click link in bio to buy');
+
+  const html = renderSlideHtml(d, 5);
+  assert.ok(html.includes('Click link in bio to buy'));
+
+  // 2. Verify CTA does NOT overwrite hook or details
+  assert.notEqual(slide.hook, 'Click link in bio to buy');
+  assert.notEqual(slide.details, 'Click link in bio to buy');
+});
