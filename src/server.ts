@@ -9,6 +9,7 @@ import { generateLearningRecommendations } from '../modules/learning-engine/engi
 import { qualifyProduct } from '../modules/product-qualification/engine.js';
 import { createAffiliateLink, getAffiliateLink, listAffiliateLinks, registerAffiliateClick } from './affiliate.js';
 import { rateLimit, requireAdmin, requestId } from './security.js';
+import { upsertProduct, listProducts, publishProduct } from './products.js';
 
 const json = (res: any, status: number, body: unknown) => {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'x-request-id': requestId(), 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY', 'referrer-policy': 'strict-origin-when-cross-origin', 'content-security-policy': \"default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https:;\", 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS', 'access-control-allow-headers': 'content-type,authorization' });
@@ -19,8 +20,22 @@ export function createRPDServer() {
   return createServer(async (req, res) => {
   if (!rateLimit(req)) return json(res, 429, { ok: false, error: 'Rate limit exceeded' });
   if (req.method === 'OPTIONS') return json(res, 204, {});
-  const publicRoute = req.method === 'GET' && (req.url === '/' || req.url === '/index.html' || req.url === '/health' || req.url?.startsWith('/go/'));
+  const publicRoute = req.method === 'GET' && (req.url === '/' || req.url === '/index.html' || req.url === '/deals' || req.url === '/health' || req.url?.startsWith('/go/'));
   if (!publicRoute && !requireAdmin(req)) return json(res, 401, { ok: false, error: 'Authentication required' });
+
+  if (req.method === 'GET' && req.url === '/deals') {
+    const products = await listProducts(true);
+    const cards = products.map((p:any) => {
+      const image = p.images?.[0] || '';
+      const price = p.price != null ? '₹' + Number(p.price).toLocaleString('en-IN') : 'See deal';
+      const mrp = p.mrp != null ? '₹' + Number(p.mrp).toLocaleString('en-IN') : '';
+      const off = p.discountPercent != null ? Math.round(Number(p.discountPercent)) + '% OFF' : '';
+      const href = '/go/' + encodeURIComponent(p.affiliateLinkId);
+      return '<article class="card"><img src="' + image.replace(/"/g,'&quot;') + '" alt=""><div class="body"><div class="platform">' + p.platform + '</div><h2>' + String(p.title).replace(/</g,'&lt;') + '</h2><div class="price">' + price + ' <del>' + mrp + '</del></div><div class="off">' + off + '</div><a href="' + href + '">View Deal</a></div></article>';
+    }).join('');
+    const html='<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Right Price Deals</title><style>body{font-family:system-ui;margin:0;background:#fff7fa;color:#171717}.wrap{max-width:1100px;margin:auto;padding:24px}.brand{font-size:28px;font-weight:900;color:#ff4f87}.sub{color:#666}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}.card{background:white;border-radius:18px;overflow:hidden;box-shadow:0 4px 20px #0001}.card img{width:100%;aspect-ratio:1/1;object-fit:cover;background:#eee}.body{padding:14px}.platform{font-size:12px;color:#777;text-transform:uppercase}.card h2{font-size:16px;min-height:42px}.price{font-size:21px;font-weight:800}.price del{font-size:13px;color:#999;font-weight:400}.off{display:inline-block;background:#ffe36b;padding:4px 8px;border-radius:8px;margin:8px 0;font-weight:700}.card a{display:block;text-align:center;background:#ff4f87;color:white;text-decoration:none;padding:11px;border-radius:10px;font-weight:700}.disclosure{font-size:12px;color:#777;margin:18px 0}</style></head><body><main class="wrap"><div class="brand">RIGHT PRICE DEALS</div><p class="sub">Curated deals worth checking.</p><p class="disclosure">Affiliate disclosure: some links may earn RPD a commission at no extra cost to you.</p><section class="grid">' + (cards || '<p>No published deals yet.</p>') + '</section></main></body></html>';
+    res.writeHead(200, {'content-type':'text/html; charset=utf-8','cache-control':'no-store'}); res.end(html); return;
+  }
 
   if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
     res.writeHead(200, {
@@ -175,10 +190,26 @@ export function createRPDServer() {
       const body = JSON.parse(raw || '{}');
       if (typeof body.url !== 'string' || !body.url.trim()) return json(res, 400, { ok: false, error: 'url is required' });
       const product = await fetchAndExtractProduct(body.url.trim());
-      return json(res, 200, { ok: true, product });
+      const qualification = qualifyProduct({ price: product.price.value, mrp: product.mrp.value, discountPercent: product.discountPercent.value, imageCount: product.images.length, title: product.title.value, platform: new URL(product.sourceUrl).hostname });
+      const stored = await upsertProduct(product, qualification);
+      return json(res, 200, { ok: true, product, qualification, stored });
     } catch (error) {
       return json(res, 502, { ok: false, error: error instanceof Error ? error.message : 'Product extraction failed' });
     }
+  }
+
+  if (req.method === 'GET' && req.url === '/api/products') return json(res, 200, { ok: true, products: await listProducts(false) });
+
+  if (req.method === 'POST' && req.url === '/api/products/publish') {
+    try {
+      let raw=''; for await (const chunk of req) raw += chunk;
+      const body=JSON.parse(raw||'{}');
+      if(typeof body.id!=='string') return json(res,400,{ok:false,error:'id is required'});
+      if(body.published && typeof body.affiliateLinkId!=='string') return json(res,400,{ok:false,error:'affiliateLinkId is required before publishing'});
+      const product=await publishProduct(body.id,Boolean(body.published),body.affiliateLinkId);
+      if(!product) return json(res,404,{ok:false,error:'Product not found'});
+      return json(res,200,{ok:true,product});
+    } catch { return json(res,400,{ok:false,error:'Invalid publish request'}); }
   }
 
   // Project persistence endpoints
