@@ -188,6 +188,13 @@ export async function fetchAndExtractProduct(
     );
   }
 
+  const hostname = url.hostname.toLowerCase();
+  const supportedHost = ['myntra.com','amazon.in','amazon.com','flipkart.com','ajio.com','meesho.com','nykaa.com'].some(d => hostname === d || hostname.endsWith('.' + d));
+  const privateHost = hostname === 'localhost' || hostname === '::1' || /^(127\\.|10\\.|192\\.168\\.|169\\.254\\.)/.test(hostname) || /^172\\.(1[6-9]|2[0-9]|3[0-1])\\./.test(hostname);
+  if (!supportedHost || privateHost) {
+    throw new ProductExtractionError('INVALID_URL','RPD extraction only accepts supported marketplace product URLs.');
+  }
+
   const platform = platformFromHostname(url.hostname);
 
   const response = await fetch(url, {
