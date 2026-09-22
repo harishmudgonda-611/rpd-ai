@@ -7,7 +7,8 @@
     "build": "tsc",
     "dev": "tsx src/server.ts",
     "test": "tsx --test src/**/*.test.ts modules/product-qualification/engine.test.ts",
-    "postbuild": "cp -r src/public dist/public"
+    "postbuild": "cp -r src/public dist/public",
+    "smoke": "node -e \"import('./dist/server.js').then(()=>console.log('RPD build smoke OK'))\""
   },
   "dependencies": {
     "cheerio": "^1.1.2"
