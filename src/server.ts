@@ -6,6 +6,7 @@ import { renderRPD } from '../modules/render-intelligence/renderer.js';
 import { logViews, getPerformance, logClick, getClicks, logOrder, getOrders } from './business-intelligence.js';
 import { calculateRevenueMetrics } from '../modules/revenue-intelligence/engine.js';
 import { generateLearningRecommendations } from '../modules/learning-engine/engine.js';
+import { qualifyProduct } from '../modules/product-qualification/engine.js';
 
 const json = (res: any, status: number, body: unknown) => {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' });
@@ -105,6 +106,26 @@ export function createRPDServer() {
               ? 'verify-product-url'
               : null,
       });
+    }
+  }
+
+  if (req.method === 'POST' && req.url === '/api/product/qualify') {
+    try {
+      let raw = '';
+      for await (const chunk of req) raw += chunk;
+      const body = JSON.parse(raw || '{}');
+      const product = body.product ?? body;
+      const result = qualifyProduct({
+        price: product.price?.value ?? product.price,
+        mrp: product.mrp?.value ?? product.mrp,
+        discountPercent: product.discountPercent?.value ?? product.discountPercent,
+        imageCount: Array.isArray(product.images) ? product.images.length : Number(product.imageCount ?? 0),
+        title: product.title?.value ?? product.title,
+        platform: product.platform?.value ?? product.platform
+      });
+      return json(res, 200, { ok: true, qualification: result });
+    } catch (error) {
+      return json(res, 400, { ok: false, error: 'Invalid product qualification request' });
     }
   }
 
