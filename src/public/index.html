@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>RPD AI — Fashion Carousel Generator</title>
+  <title>RPD Money Engine — Affiliate Commerce OS</title>
   <style>
     :root {
       --primary: #ff4f87;
@@ -299,8 +299,8 @@
 
 <header>
   <a href="#" class="logo" onclick="showTab('new')">
-    <span>RPD AI</span>
-    <span class="logo-badge">PROD</span>
+    <span>RPD MONEY ENGINE</span>
+    <span class="logo-badge">AFFILIATE OS</span>
   </a>
   <div class="nav-tabs">
     <button class="tab-btn active" id="tab-new" onclick="showTab('new')">New Creative</button>
@@ -483,6 +483,25 @@ let currentResult = null;
 let currentProject = null;
 let selectedTemplate = 'rpd-editorial';
 let activeSlideIndex = 0;
+
+(function installAdminAuth() {
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async function(input, init = {}) {
+    const url = typeof input === 'string' ? input : input.url;
+    const headers = new Headers(init.headers || {});
+    let token = localStorage.getItem('rpd_admin_token');
+    if (token) headers.set('Authorization', 'Bearer ' + token);
+    let response = await nativeFetch(input, { ...init, headers });
+    if (response.status === 401 && String(url).startsWith('/api/')) {
+      token = window.prompt('RPD Admin Token');
+      if (!token) return response;
+      localStorage.setItem('rpd_admin_token', token);
+      headers.set('Authorization', 'Bearer ' + token);
+      response = await nativeFetch(input, { ...init, headers });
+    }
+    return response;
+  };
+})();
 
 function showTab(tabName) {
   ['new', 'editor', 'projects', 'analytics'].forEach(t => {
