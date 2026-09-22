@@ -1,35 +1,38 @@
-# RPD AI
+# RPD Money Engine
 
-RPD is a free/open-source-first fashion affiliate content engine.
+Affiliate-focused commerce engine built on the existing RPD AI foundation.
 
-## Build rules
+## Production flow
 
-- GitHub is the single source of truth.
-- Prefer compatible open-source components after license review.
-- If no suitable component exists, implement from scratch.
-- Never require paid APIs, subscriptions, or credits.
-- Preserve existing modules and contracts.
-- Every completed module must include tests and documentation.
-- Device packages are saved under `Download/RPD Last/`.
+Product URL -> extraction -> product intelligence -> qualification -> creative -> tracked affiliate link -> public /go/<id> redirect -> click attribution -> confirmed conversion import -> revenue intelligence.
 
-## Module 01 — Product Intelligence
+## Run locally
 
-Accepts a public product URL and extracts normalized product information from HTML using JSON-LD/Schema.org, OpenGraph, Twitter metadata, common ecommerce metadata and DOM fallbacks.
-
-### Run
-
-```bash
-npm install
+npm ci
 npm test
-npm run dev
-```
+npm run build
+RPD_ADMIN_TOKEN="$(openssl rand -hex 32)" npm start
 
-Local API: `http://127.0.0.1:8787`
+The app listens on port 8787. In production set RPD_ADMIN_TOKEN. Without that token, protected APIs are intentionally unavailable when NODE_ENV=production.
 
-POST `/api/product/extract`:
+## Docker
 
-```json
-{"url":"https://example.com/product"}
-```
+cp .env.example .env
+Set a strong RPD_ADMIN_TOKEN in .env, then run: docker compose up --build -d
 
-The extractor reports field provenance, confidence and warnings. It does not invent missing product facts.
+## Affiliate compliance
+
+- Store only verified destination URLs supplied by the operator.
+- Never invent prices, discounts, availability, ratings, commissions, or orders.
+- Use marketplace/affiliate APIs or feeds where required; do not bypass access controls.
+- Publish the appropriate affiliate disclosure.
+- Use sponsored/nofollow attributes for affiliate outbound links where applicable.
+- Import actual network conversions instead of generating synthetic revenue.
+
+## Supabase
+
+Run data/schema.sql in a Supabase SQL editor when using Postgres persistence. Local JSON persistence is suitable for single-instance/self-hosted operation; multi-instance deployments should move persistence to Postgres before horizontal scaling.
+
+## Deployment readiness
+
+GitHub Actions verifies TypeScript compilation and tests. A hosting provider still needs to be connected to this repository and supplied with production environment variables.
