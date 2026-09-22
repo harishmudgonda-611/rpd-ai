@@ -1,0 +1,12 @@
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import { randomBytes } from 'node:crypto';
+
+export type StoredProduct = { id:string; sourceUrl:string; title:string; platform:string; price:number|null; mrp:number|null; discountPercent:number|null; images:string[]; product:any; qualification:any; published:boolean; affiliateLinkId?:string; createdAt:string; updatedAt:string };
+const FILE=join(process.cwd(),'data','products.json');
+async function readAll():Promise<StoredProduct[]> { await mkdir(join(process.cwd(),'data'),{recursive:true}); try{return JSON.parse(await readFile(FILE,'utf8'));}catch{return [];} }
+async function writeAll(items:StoredProduct[]) { await mkdir(join(process.cwd(),'data'),{recursive:true}); await writeFile(FILE,JSON.stringify(items,null,2),'utf8'); }
+export async function upsertProduct(product:any,qualification:any):Promise<StoredProduct>{ const all=await readAll(); const sourceUrl=String(product.sourceUrl||product.canonicalUrl?.value||'').trim(); const existing=all.find(p=>p.sourceUrl===sourceUrl); const now=new Date().toISOString(); const saved:StoredProduct={ id:existing?.id||'prod_'+randomBytes(8).toString('hex'), sourceUrl, title:product.title?.value||'Untitled product', platform:product.platform||new URL(sourceUrl).hostname, price:product.price?.value??null, mrp:product.mrp?.value??null, discountPercent:product.discountPercent?.value??null, images:Array.isArray(product.images)?product.images.map((x:any)=>typeof x==='string'?x:x.url).filter(Boolean):[], product, qualification, published:existing?.published??Boolean(qualification?.publish), affiliateLinkId:existing?.affiliateLinkId, createdAt:existing?.createdAt||now, updatedAt:now }; const idx=all.findIndex(p=>p.id===saved.id); if(idx>=0)all[idx]=saved;else all.push(saved); await writeAll(all); return saved; }
+export async function listProducts(publishedOnly=false){const all=await readAll();return publishedOnly?all.filter(p=>p.published&&p.affiliateLinkId):all;}
+export async function getProduct(id:string){return (await readAll()).find(p=>p.id===id)||null;}
+export async function publishProduct(id:string,published:boolean,affiliateLinkId?:string){const all=await readAll();const p=all.find(x=>x.id===id);if(!p)return null;p.published=published;if(affiliateLinkId!==undefined)p.affiliateLinkId=affiliateLinkId;p.updatedAt=new Date().toISOString();await writeAll(all);return p;}
