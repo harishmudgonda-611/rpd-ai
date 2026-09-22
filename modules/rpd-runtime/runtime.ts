@@ -6,6 +6,7 @@ import { analyzeProductAssets } from '../product-asset-intelligence/analyzer.js'
 import { analyzeExtraction } from '../extraction-intelligence/analyzer.js';
 import { createProductionManifest } from '../rpd-production/pipeline.js';
 import { renderRPD } from '../render-intelligence/renderer.js';
+import { qualifyProduct } from '../product-qualification/engine.js';
 import type {
   RPDGenerateRequest,
   RPDGenerateResult,
@@ -28,6 +29,14 @@ export async function generateRPDFromUrl(
   const extraction = await extractWithAdapters(request.url.trim());
   const product = extraction.product;
   const extractionIntelligence = analyzeExtraction(product);
+  const qualification = qualifyProduct({
+    price: product.price.value,
+    mrp: product.mrp.value,
+    discountPercent: product.discountPercent.value,
+    imageCount: product.images.length,
+    title: product.title.value,
+    platform: extractionIntelligence.platform,
+  });
 
   const assets = analyzeProductAssets(product.images);
 
@@ -114,6 +123,7 @@ export async function generateRPDFromUrl(
     product,
     extraction,
     extractionIntelligence,
+    qualification,
     assets,
     production,
     render,
