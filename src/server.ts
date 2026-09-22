@@ -7,15 +7,20 @@ import { logViews, getPerformance, logClick, getClicks, logOrder, getOrders } fr
 import { calculateRevenueMetrics } from '../modules/revenue-intelligence/engine.js';
 import { generateLearningRecommendations } from '../modules/learning-engine/engine.js';
 import { qualifyProduct } from '../modules/product-qualification/engine.js';
+import { createAffiliateLink, getAffiliateLink, listAffiliateLinks, registerAffiliateClick } from './affiliate.js';
+import { rateLimit, requireAdmin, requestId } from './security.js';
 
 const json = (res: any, status: number, body: unknown) => {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' });
+  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'x-request-id': requestId(), 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY', 'referrer-policy': 'strict-origin-when-cross-origin', 'content-security-policy': \"default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https:;\", 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS', 'access-control-allow-headers': 'content-type,authorization' });
   res.end(JSON.stringify(body, null, 2));
 };
 
 export function createRPDServer() {
   return createServer(async (req, res) => {
+  if (!rateLimit(req)) return json(res, 429, { ok: false, error: 'Rate limit exceeded' });
   if (req.method === 'OPTIONS') return json(res, 204, {});
+  const publicRoute = req.method === 'GET' && (req.url === '/' || req.url === '/index.html' || req.url === '/health' || req.url?.startsWith('/go/'));
+  if (!publicRoute && !requireAdmin(req)) return json(res, 401, { ok: false, error: 'Authentication required' });
 
   if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
     res.writeHead(200, {
@@ -48,6 +53,40 @@ export function createRPDServer() {
       return json(res, 404, { ok: false, error: 'File not found' });
     }
   }
+  if (req.method === 'GET' && req.url?.startsWith('/go/')) {
+    const id = decodeURIComponent(req.url.slice('/go/'.length).split('?')[0]);
+    const link = await getAffiliateLink(id);
+    if (!link) return json(res, 404, { ok: false, error: 'Affiliate link not found' });
+    await registerAffiliateClick(id);
+    res.writeHead(302, { location: link.destinationUrl, 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' });
+    res.end();
+    return;
+  }
+
+  if (req.method === 'GET' && req.url === '/api/affiliate-links') {
+    return json(res, 200, { ok: true, links: await listAffiliateLinks() });
+  }
+
+  if (req.method === 'POST' && req.url === '/api/affiliate-links') {
+    try {
+      let raw = '';
+      for await (const chunk of req) {
+        raw += chunk;
+        if (raw.length > 256 * 1024) return json(res, 413, { ok: false, error: 'Request too large' });
+      }
+      const body = JSON.parse(raw || '{}');
+      const link = await createAffiliateLink({
+        productId: String(body.productId || '').trim(),
+        network: String(body.network || '').trim(),
+        destinationUrl: String(body.destinationUrl || '').trim(),
+        label: body.label ? String(body.label) : undefined
+      });
+      return json(res, 201, { ok: true, link, trackingUrl: '/go/' + link.id });
+    } catch (error) {
+      return json(res, 400, { ok: false, error: error instanceof Error ? error.message : 'Invalid affiliate link' });
+    }
+  }
+
   if (req.method === 'GET' && req.url === '/health') return json(res, 200, { ok: true, service: 'rpd-product-intelligence', version: '0.2.0' });
   if (req.method === 'POST' && req.url === '/api/rpd/generate') {
     try {
