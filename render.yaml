@@ -4,7 +4,7 @@ services:
     runtime: docker
     plan: free
     region: singapore
-    branch: rpd-money-engine-v1
+    branch: main
     dockerfilePath: ./Dockerfile
     dockerContext: .
     autoDeployTrigger: commit
@@ -30,7 +30,7 @@ services:
     runtime: docker
     plan: free
     region: singapore
-    branch: rpd-money-engine-v1
+    branch: main
     dockerfilePath: ./browser-worker/Dockerfile
     dockerContext: ./browser-worker
     autoDeployTrigger: commit
