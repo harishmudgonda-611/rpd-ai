@@ -20,6 +20,7 @@ export type RPDGenerateResult = {
   extraction: ExtractionResult;
   extractionIntelligence: IntelligentExtractionResult;
   assets: ProductAssetAnalysis;
+  qualification: import('../product-qualification/engine.js').QualificationResult;
   production: ProductionManifest;
   creative: CreativeExecutionPlan;
   generation: RPDGenerationResult;
