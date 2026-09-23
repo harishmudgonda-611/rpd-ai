@@ -13,7 +13,6 @@ import { createZip } from './zip.js';
 import { upsertProduct, listProducts, publishProduct } from './products.js';
 
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'x-request-id': requestId(), 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY', 'referrer-policy': 'strict-origin-when-cross-origin', 'content-security-policy': "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https:;", 'access-control-allow-origin': process.env.PUBLIC_ORIGIN ?? 'http://localhost:8787', 'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS', 'access-control-allow-headers': 'content-type,authorization' });
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'x-request-id': requestId(), 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY', 'referrer-policy': 'strict-origin-when-cross-origin', 'content-security-policy': \"default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https:;\", 'access-control-allow-origin': process.env.PUBLIC_ORIGIN ?? 'null', 'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS', 'access-control-allow-headers': 'content-type,authorization' });
   res.end(JSON.stringify(body, null, 2));
 };
 
