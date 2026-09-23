@@ -13,7 +13,7 @@ npm test
 npm run build
 RPD_ADMIN_TOKEN="$(openssl rand -hex 32)" npm start
 
-The app listens on port 8787. In production set RPD_ADMIN_TOKEN. Without that token, protected APIs are intentionally unavailable when NODE_ENV=production.
+The app listens on port 8787. In production set RPD_ADMIN_TOKEN plus SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY. Protected APIs are intentionally unavailable when NODE_ENV=production without admin authentication, and production persistence fails fast if Supabase is not configured.
 
 ## Docker
 
@@ -31,8 +31,8 @@ Set a strong RPD_ADMIN_TOKEN in .env, then run: docker compose up --build -d
 
 ## Supabase
 
-Run data/schema.sql in a Supabase SQL editor when using Postgres persistence. Local JSON persistence is suitable for single-instance/self-hosted operation; multi-instance deployments should move persistence to Postgres before horizontal scaling.
+Run `data/schema.sql` in a Supabase SQL editor before production deployment. Products, affiliate links, projects, performance, clicks, orders, and learning signals use Supabase when configured. Local JSON is retained only as a development/self-hosted fallback; production requires Supabase.
 
 ## Deployment readiness
 
-GitHub Actions verifies TypeScript compilation and tests. A hosting provider still needs to be connected to this repository and supplied with production environment variables.
+GitHub Actions verifies TypeScript compilation and tests. Real ZIP export is available from `/api/rpd/export/zip`. A hosting provider still needs to be connected to this repository and supplied with production environment variables.
