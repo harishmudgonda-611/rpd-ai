@@ -110,7 +110,18 @@ export function createRPDServer() {
     }
   }
 
-  if (req.method === 'GET' && req.url === '/health') return json(res, 200, { ok: true, service: 'rpd-product-intelligence', version: '0.2.0' });
+  if (req.method === 'GET' && req.url === '/health') {
+    const storageReady = process.env.NODE_ENV !== 'production' || Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+    const adminReady = process.env.NODE_ENV !== 'production' || Boolean(process.env.RPD_ADMIN_TOKEN);
+    const ready = storageReady && adminReady;
+    return json(res, ready ? 200 : 503, {
+      ok: ready,
+      service: 'rpd-money-engine',
+      version: '1.0.0',
+      environment: process.env.NODE_ENV ?? 'development',
+      checks: { storage: storageReady, adminAuth: adminReady }
+    });
+  }
   if (req.method === 'POST' && req.url === '/api/rpd/generate') {
     try {
       let raw = await readBody(req, 1024 * 1024);
