@@ -4,6 +4,8 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createRPDServer } from './server.js';
 
+process.env.RPD_ALLOW_LOCAL_EXTRACTION = 'true';
+
 function listenServer(server: ReturnType<typeof createRPDServer>): Promise<{ port: number; close: () => Promise<void> }> {
   return new Promise((resolve) => {
     server.listen(0, '127.0.0.1', () => {
@@ -101,10 +103,12 @@ test('POST /api/rpd/export/zip returns zip metadata manifest and slide assets', 
       }),
     });
     assert.equal(res.status, 200);
-    const data = await res.json();
-    assert.equal(data.ok, true);
-    assert.equal(data.slideCount, 2);
-    assert.ok(data.zipFilename.endsWith('.zip'));
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    assert.equal(res.headers.get('content-type'), 'application/zip');
+    assert.equal(bytes[0], 0x50);
+    assert.equal(bytes[1], 0x4b);
+    assert.equal(bytes[2], 0x03);
+    assert.equal(bytes[3], 0x04);
   } finally {
     await close();
   }
