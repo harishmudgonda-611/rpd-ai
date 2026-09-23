@@ -1,4 +1,6 @@
 import * as cheerio from 'cheerio';
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 import type { NormalizedProduct } from './types.js';
 import { ProductExtractionError } from './extraction-error.js';
 
@@ -203,17 +205,50 @@ export async function fetchAndExtractProduct(
 
   const platform = platformFromHostname(url.hostname);
 
-  const response = await fetch(url, {
-    redirect: 'follow',
-    headers: {
-      'user-agent':
-        'RPD-Product-Intelligence/0.2 (+local-user-request)',
-      'accept':
-        'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    },
-  });
+  const isPrivateAddress = (address: string) => {
+    if (isIP(address) === 4) {
+      const [a,b,c] = address.split('.').map(Number);
+      return a === 10 || a === 127 || a === 0 || a === 169 && b === 254 || a === 192 && b === 168 || a === 172 && b >= 16 && b <= 31;
+    }
+    if (isIP(address) === 6) {
+      const normalized = address.toLowerCase();
+      return normalized === '::1' || normalized === '::' || normalized.startsWith('fc') || normalized.startsWith('fd') || normalized.startsWith('fe80:');
+    }
+    return false;
+  };
 
-  const html = await response.text();
+  const assertPublicHostname = async (hostname: string) => {
+    if (allowLocal && isLocalHost) return;
+    const addresses = isIP(hostname) ? [hostname] : (await lookup(hostname, { all: true })).map(r => r.address);
+    if (!addresses.length || addresses.some(isPrivateAddress)) throw new ProductExtractionError('INVALID_URL','Product source resolves to a private or local network address.');
+  };
+
+  await assertPublicHostname(url.hostname);
+  let response: Response;
+  let currentUrl = url;
+  for (let redirectCount = 0; redirectCount <= 5; redirectCount += 1) {
+    await assertPublicHostname(currentUrl.hostname);
+    response = await fetch(currentUrl, {
+      redirect: 'manual',
+      headers: {
+        'user-agent': 'RPD-Product-Intelligence/0.2 (+local-user-request)',
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+    });
+    if (![301,302,303,307,308].includes(response.status)) break;
+    const location = response.headers.get('location');
+    if (!location) throw new ProductExtractionError('UPSTREAM_HTTP_ERROR','Product source returned an invalid redirect.');
+    currentUrl = new URL(location, currentUrl);
+    if (!['http:','https:'].includes(currentUrl.protocol)) throw new ProductExtractionError('INVALID_URL','Product source redirected to an unsupported protocol.');
+    if (!(supportedMarketplace || (allowLocal && isLocalHost))) {
+      const redirectedHost = currentUrl.hostname.toLowerCase();
+      const redirectedSupported = ['myntra.com','amazon.in','amazon.com','flipkart.com','ajio.com','meesho.com','nykaa.com'].some(d => redirectedHost === d || redirectedHost.endsWith('.' + d));
+      if (!redirectedSupported && !(allowLocal && redirectedHost === hostname)) throw new ProductExtractionError('INVALID_URL','Product source redirected outside supported marketplaces.');
+    }
+    if (redirectCount === 5) throw new ProductExtractionError('UPSTREAM_HTTP_ERROR','Too many redirects while fetching product data.');
+  }
+
+  const html = await response!.text();
 
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
