@@ -6,15 +6,48 @@ import { renderRPD } from '../modules/render-intelligence/renderer.js';
 import { logViews, getPerformance, logClick, getClicks, logOrder, getOrders } from './business-intelligence.js';
 import { calculateRevenueMetrics } from '../modules/revenue-intelligence/engine.js';
 import { generateLearningRecommendations } from '../modules/learning-engine/engine.js';
+import { qualifyProduct } from '../modules/product-qualification/engine.js';
+import { createAffiliateLink, getAffiliateLink, listAffiliateLinks, registerAffiliateClick } from './affiliate.js';
+import { rateLimit, requireAdmin, requestId, readBody } from './security.js';
+import { createZip } from './zip.js';
+import { upsertProduct, listProducts, publishProduct } from './products.js';
+import { importAffiliateCsv } from './affiliate-import.js';
 
 const json = (res: any, status: number, body: unknown) => {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' });
+  res.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'x-request-id': requestId(),
+    'x-content-type-options': 'nosniff',
+    'x-frame-options': 'DENY',
+    'referrer-policy': 'strict-origin-when-cross-origin',
+    'content-security-policy': "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https:;",
+    'access-control-allow-origin': process.env.PUBLIC_ORIGIN ?? 'http://localhost:8787',
+    'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS',
+    'access-control-allow-headers': 'content-type,authorization',
+  });
   res.end(JSON.stringify(body, null, 2));
 };
 
 export function createRPDServer() {
   return createServer(async (req, res) => {
+  if (!rateLimit(req)) return json(res, 429, { ok: false, error: 'Rate limit exceeded' });
   if (req.method === 'OPTIONS') return json(res, 204, {});
+  const publicRoute = req.method === 'GET' && (req.url === '/' || req.url === '/index.html' || req.url === '/deals' || req.url === '/health' || req.url?.startsWith('/go/'));
+  if (!publicRoute && !requireAdmin(req)) return json(res, 401, { ok: false, error: 'Authentication required' });
+
+  if (req.method === 'GET' && req.url === '/deals') {
+    const products = await listProducts(true);
+    const cards = products.map((p:any) => {
+      const image = p.images?.[0] || '';
+      const price = p.price != null ? '₹' + Number(p.price).toLocaleString('en-IN') : 'See deal';
+      const mrp = p.mrp != null ? '₹' + Number(p.mrp).toLocaleString('en-IN') : '';
+      const off = p.discountPercent != null ? Math.round(Number(p.discountPercent)) + '% OFF' : '';
+      const href = '/go/' + encodeURIComponent(p.affiliateLinkId);
+      return '<article class="card"><img src="' + image.replace(/"/g,'&quot;') + '" alt=""><div class="body"><div class="platform">' + p.platform + '</div><h2>' + String(p.title).replace(/</g,'&lt;') + '</h2><div class="price">' + price + ' <del>' + mrp + '</del></div><div class="off">' + off + '</div><a href="' + href + '">View Deal</a></div></article>';
+    }).join('');
+    const html='<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Right Price Deals</title><style>body{font-family:system-ui;margin:0;background:#fff7fa;color:#171717}.wrap{max-width:1100px;margin:auto;padding:24px}.brand{font-size:28px;font-weight:900;color:#ff4f87}.sub{color:#666}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}.card{background:white;border-radius:18px;overflow:hidden;box-shadow:0 4px 20px #0001}.card img{width:100%;aspect-ratio:1/1;object-fit:cover;background:#eee}.body{padding:14px}.platform{font-size:12px;color:#777;text-transform:uppercase}.card h2{font-size:16px;min-height:42px}.price{font-size:21px;font-weight:800}.price del{font-size:13px;color:#999;font-weight:400}.off{display:inline-block;background:#ffe36b;padding:4px 8px;border-radius:8px;margin:8px 0;font-weight:700}.card a{display:block;text-align:center;background:#ff4f87;color:white;text-decoration:none;padding:11px;border-radius:10px;font-weight:700}.disclosure{font-size:12px;color:#777;margin:18px 0}</style></head><body><main class="wrap"><div class="brand">RIGHT PRICE DEALS</div><p class="sub">Curated deals worth checking.</p><p class="disclosure">Affiliate disclosure: some links may earn RPD a commission at no extra cost to you.</p><section class="grid">' + (cards || '<p>No published deals yet.</p>') + '</section></main></body></html>';
+    res.writeHead(200, {'content-type':'text/html; charset=utf-8','cache-control':'no-store'}); res.end(html); return;
+  }
 
   if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
     res.writeHead(200, {
@@ -36,7 +69,7 @@ export function createRPDServer() {
     try {
       const { readFile } = await import('node:fs/promises');
       const { join } = await import('node:path');
-      const fileName = req.url.replace('/modules/rpd-production/output/', '');
+      const fileName = decodeURIComponent(req.url.replace('/modules/rpd-production/output/', '')); if (fileName.includes('/') || fileName.includes('\\') || fileName === '.' || fileName === '..') return json(res, 400, { ok: false, error: 'Invalid asset path' });
       const filePath = join(process.cwd(), 'modules', 'rpd-production', 'output', fileName);
       const content = await readFile(filePath, 'utf8');
       const contentType = fileName.endsWith('.svg') ? 'image/svg+xml' : fileName.endsWith('.html') ? 'text/html' : 'text/plain';
@@ -47,11 +80,51 @@ export function createRPDServer() {
       return json(res, 404, { ok: false, error: 'File not found' });
     }
   }
-  if (req.method === 'GET' && req.url === '/health') return json(res, 200, { ok: true, service: 'rpd-product-intelligence', version: '0.2.0' });
+  if (req.method === 'GET' && req.url?.startsWith('/go/')) {
+    const id = decodeURIComponent(req.url.slice('/go/'.length).split('?')[0]);
+    const link = await getAffiliateLink(id);
+    if (!link) return json(res, 404, { ok: false, error: 'Affiliate link not found' });
+    await registerAffiliateClick(id);
+    res.writeHead(302, { location: link.destinationUrl, 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' });
+    res.end();
+    return;
+  }
+
+  if (req.method === 'GET' && req.url === '/api/affiliate-links') {
+    return json(res, 200, { ok: true, links: await listAffiliateLinks() });
+  }
+
+  if (req.method === 'POST' && req.url === '/api/affiliate-links') {
+    try {
+      let raw = await readBody(req, 256 * 1024);
+      const body = JSON.parse(raw || '{}');
+      const link = await createAffiliateLink({
+        productId: String(body.productId || '').trim(),
+        network: String(body.network || '').trim(),
+        destinationUrl: String(body.destinationUrl || '').trim(),
+        label: body.label ? String(body.label) : undefined
+      });
+      return json(res, 201, { ok: true, link, trackingUrl: '/go/' + link.id });
+    } catch (error) {
+      return json(res, 400, { ok: false, error: error instanceof Error ? error.message : 'Invalid affiliate link' });
+    }
+  }
+
+  if (req.method === 'GET' && req.url === '/health') {
+    const storageReady = process.env.NODE_ENV !== 'production' || Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+    const adminReady = process.env.NODE_ENV !== 'production' || Boolean(process.env.RPD_ADMIN_TOKEN);
+    const ready = storageReady && adminReady;
+    return json(res, ready ? 200 : 503, {
+      ok: ready,
+      service: 'rpd-money-engine',
+      version: '1.0.0',
+      environment: process.env.NODE_ENV ?? 'development',
+      checks: { storage: storageReady, adminAuth: adminReady }
+    });
+  }
   if (req.method === 'POST' && req.url === '/api/rpd/generate') {
     try {
-      let raw = '';
-      for await (const chunk of req) raw += chunk;
+      let raw = await readBody(req, 1024 * 1024);
 
       const body = JSON.parse(raw || '{}');
 
@@ -108,6 +181,25 @@ export function createRPDServer() {
     }
   }
 
+  if (req.method === 'POST' && req.url === '/api/product/qualify') {
+    try {
+      let raw = await readBody(req, 1024 * 1024);
+      const body = JSON.parse(raw || '{}');
+      const product = body.product ?? body;
+      const result = qualifyProduct({
+        price: product.price?.value ?? product.price,
+        mrp: product.mrp?.value ?? product.mrp,
+        discountPercent: product.discountPercent?.value ?? product.discountPercent,
+        imageCount: Array.isArray(product.images) ? product.images.length : Number(product.imageCount ?? 0),
+        title: product.title?.value ?? product.title,
+        platform: product.platform?.value ?? product.platform
+      });
+      return json(res, 200, { ok: true, qualification: result });
+    } catch (error) {
+      return json(res, 400, { ok: false, error: 'Invalid product qualification request' });
+    }
+  }
+
   if (req.method === 'POST' && req.url === '/api/product/extract') {
     try {
       let raw = '';
@@ -115,10 +207,33 @@ export function createRPDServer() {
       const body = JSON.parse(raw || '{}');
       if (typeof body.url !== 'string' || !body.url.trim()) return json(res, 400, { ok: false, error: 'url is required' });
       const product = await fetchAndExtractProduct(body.url.trim());
-      return json(res, 200, { ok: true, product });
+      const qualification = qualifyProduct({ price: product.price.value, mrp: product.mrp.value, discountPercent: product.discountPercent.value, imageCount: product.images.length, title: product.title.value ?? undefined, platform: new URL(product.sourceUrl == null ? body.url.trim() : String(product.sourceUrl)).hostname });
+      const stored = await upsertProduct(product, qualification);
+      return json(res, 200, { ok: true, product, qualification, stored });
     } catch (error) {
       return json(res, 502, { ok: false, error: error instanceof Error ? error.message : 'Product extraction failed' });
     }
+  }
+
+  if (req.method === 'GET' && req.url === '/api/products') return json(res, 200, { ok: true, products: await listProducts(false) });
+
+  if (req.method === 'POST' && req.url === '/api/products/publish') {
+    try {
+      let raw=''; for await (const chunk of req) raw += chunk;
+      const body=JSON.parse(raw||'{}');
+      if(typeof body.id!=='string') return json(res,400,{ok:false,error:'id is required'});
+      const existing=await import('./products.js').then(m=>m.getProduct(body.id));
+      if(!existing) return json(res,404,{ok:false,error:'Product not found'});
+      if(body.published){
+        if(existing.qualification?.publish===false) return json(res,409,{ok:false,error:'Product qualification does not allow publishing',qualification:existing.qualification});
+        if(typeof body.affiliateLinkId!=='string') return json(res,400,{ok:false,error:'affiliateLinkId is required before publishing'});
+        const link=await getAffiliateLink(body.affiliateLinkId);
+        if(!link || link.productId!==body.id) return json(res,400,{ok:false,error:'Affiliate link does not belong to this product'});
+      }
+      const product=await publishProduct(body.id,Boolean(body.published),body.affiliateLinkId);
+      if(!product) return json(res,404,{ok:false,error:'Product not found'});
+      return json(res,200,{ok:true,product});
+    } catch { return json(res,400,{ok:false,error:'Invalid publish request'}); }
   }
 
   // Project persistence endpoints
@@ -177,13 +292,11 @@ export function createRPDServer() {
       const body = JSON.parse(raw || '{}');
       const render = await renderRPD(body);
 
-      // Return ZIP metadata manifest and slide SVGs for client zipping
-      return json(res, 200, {
-        ok: true,
-        zipFilename: `rpd-carousel-${Date.now()}.zip`,
-        slideCount: render.slideCount,
-        assets: render.assets
-      });
+      const files = render.assets.map((asset) => ({ name: asset.path.split('/').pop() || asset.id, path: asset.path }));
+      const zip = await createZip(files);
+      res.writeHead(200, { 'content-type': 'application/zip', 'content-disposition': 'attachment; filename="rpd-carousel.zip"', 'content-length': String(zip.length), 'cache-control': 'no-store' });
+      res.end(zip);
+      return;
     } catch (error) {
       return json(res, 500, { ok: false, error: 'Failed to prepare ZIP export' });
     }
@@ -249,6 +362,16 @@ export function createRPDServer() {
       return json(res, 200, { ok: true, order });
     } catch (error) {
       return json(res, 500, { ok: false, error: 'Failed to log affiliate order' });
+    }
+  }
+
+  if (req.method === 'POST' && req.url === '/api/affiliate/import') {
+    try {
+      const csv = await readBody(req, 2 * 1024 * 1024);
+      const result = await importAffiliateCsv(csv);
+      return json(res, 200, { ok: true, result });
+    } catch (error) {
+      return json(res, 400, { ok: false, error: error instanceof Error ? error.message : 'Affiliate CSV import failed' });
     }
   }
 

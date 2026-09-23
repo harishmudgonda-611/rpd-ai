@@ -1,92 +1,13 @@
 import { readFile, writeFile, readdir, unlink, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { dbSelect, dbUpsert, dbDelete, localRead, localWrite, requireProductionStorage, useSupabase } from './storage.js';
 
-export type RPDProject = {
-  id: string;
-  title: string;
-  productUrl: string;
-  template: string;
-  product: any;
-  generation: any;
-  slides: any[];
-  createdAt: string;
-  updatedAt: string;
-};
-
-const PROJECTS_DIR = join(process.cwd(), 'data', 'projects');
-
-async function ensureDir() {
-  await mkdir(PROJECTS_DIR, { recursive: true });
-}
-
-export async function listProjects(): Promise<RPDProject[]> {
-  await ensureDir();
-  const files = await readdir(PROJECTS_DIR);
-  const projects: RPDProject[] = [];
-
-  for (const file of files) {
-    if (file.endsWith('.json')) {
-      try {
-        const raw = await readFile(join(PROJECTS_DIR, file), 'utf8');
-        projects.push(JSON.parse(raw));
-      } catch {
-        // Skip invalid file
-      }
-    }
-  }
-
-  return projects.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-}
-
-export async function saveProject(project: Partial<RPDProject> & { id?: string }): Promise<RPDProject> {
-  await ensureDir();
-  const id = project.id || `proj_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-  const now = new Date().toISOString();
-
-  let existing: RPDProject | null = null;
-  const filePath = join(PROJECTS_DIR, `${id}.json`);
-
-  try {
-    const raw = await readFile(filePath, 'utf8');
-    existing = JSON.parse(raw);
-  } catch {
-    existing = null;
-  }
-
-  const saved: RPDProject = {
-    id,
-    title: project.title || existing?.title || project.product?.title?.value || 'Untitled Carousel',
-    productUrl: project.productUrl || existing?.productUrl || '',
-    template: project.template || existing?.template || 'rpd-editorial',
-    product: project.product || existing?.product || null,
-    generation: project.generation || existing?.generation || null,
-    slides: project.slides || existing?.slides || [],
-    createdAt: existing?.createdAt || now,
-    updatedAt: now,
-  };
-
-  await writeFile(filePath, JSON.stringify(saved, null, 2), 'utf8');
-  return saved;
-}
-
-export async function getProject(id: string): Promise<RPDProject | null> {
-  await ensureDir();
-  const filePath = join(PROJECTS_DIR, `${id}.json`);
-  try {
-    const raw = await readFile(filePath, 'utf8');
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-export async function deleteProject(id: string): Promise<boolean> {
-  await ensureDir();
-  const filePath = join(PROJECTS_DIR, `${id}.json`);
-  try {
-    await unlink(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
+export type RPDProject={id:string;title:string;productUrl:string;template:string;product:any;generation:any;slides:any[];createdAt:string;updatedAt:string};
+const DIR=join(process.cwd(),'data','projects');
+const fromDb=(r:any):RPDProject=>({id:r.id,title:r.title,productUrl:r.product_url||'',template:r.template,product:r.product,generation:r.generation,slides:r.slides||[],createdAt:r.created_at,updatedAt:r.updated_at});
+const toDb=(p:RPDProject)=>({id:p.id,title:p.title,product_url:p.productUrl,template:p.template,product:p.product,generation:p.generation,slides:p.slides,created_at:p.createdAt,updated_at:p.updatedAt});
+async function localList(){await mkdir(DIR,{recursive:true});const files=await readdir(DIR);const out:RPDProject[]=[];for(const f of files)if(f.endsWith('.json'))try{out.push(JSON.parse(await readFile(join(DIR,f),'utf8')))}catch{}return out.sort((a,b)=>new Date(b.updatedAt).getTime()-new Date(a.updatedAt).getTime())}
+export async function listProjects():Promise<RPDProject[]>{requireProductionStorage();if(useSupabase())return (await dbSelect<any>('rpd_projects','?order=updated_at.desc')).map(fromDb);return localList()}
+export async function saveProject(project:Partial<RPDProject>&{id?:string}):Promise<RPDProject>{requireProductionStorage();const now=new Date().toISOString();const id=project.id||'proj_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);if(useSupabase()){const old=await dbSelect<any>('rpd_projects','?id=eq.'+encodeURIComponent(id)+'&limit=1');const p:RPDProject={id,title:project.title||old[0]?.title||project.product?.title?.value||'Untitled Carousel',productUrl:project.productUrl||old[0]?.product_url||'',template:project.template||old[0]?.template||'rpd-editorial',product:project.product ?? old[0]?.product ?? null,generation:project.generation ?? old[0]?.generation ?? null,slides:project.slides||old[0]?.slides||[],createdAt:old[0]?.created_at||now,updatedAt:now};return fromDb(await dbUpsert<any>('rpd_projects',toDb(p),'id'))}await mkdir(DIR,{recursive:true});const all=await localList();const old=all.find(x=>x.id===id);const p:RPDProject={id,title:project.title||old?.title||project.product?.title?.value||'Untitled Carousel',productUrl:project.productUrl||old?.productUrl||'',template:project.template||old?.template||'rpd-editorial',product:project.product ?? old?.product ?? null,generation:project.generation ?? old?.generation ?? null,slides:project.slides||old?.slides||[],createdAt:old?.createdAt||now,updatedAt:now};await localWrite(join('projects',id+'.json'),p);return p}
+export async function getProject(id:string):Promise<RPDProject|null>{requireProductionStorage();if(useSupabase()){const r=await dbSelect<any>('rpd_projects','?id=eq.'+encodeURIComponent(id)+'&limit=1');return r[0]?fromDb(r[0]):null}try{return JSON.parse(await readFile(join(DIR,id+'.json'),'utf8'))}catch{return null}}
+export async function deleteProject(id:string):Promise<boolean>{requireProductionStorage();if(useSupabase()){await dbDelete('rpd_projects','id=eq.'+encodeURIComponent(id));return true}try{await unlink(join(DIR,id+'.json'));return true}catch{return false}}

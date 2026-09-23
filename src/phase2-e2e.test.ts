@@ -4,6 +4,8 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createRPDServer } from './server.js';
 
+process.env.RPD_ALLOW_LOCAL_EXTRACTION = 'true';
+
 function listenServer(server: ReturnType<typeof createRPDServer>): Promise<{ port: number; close: () => Promise<void> }> {
   return new Promise((resolve) => {
     server.listen(0, '127.0.0.1', () => {
@@ -52,7 +54,7 @@ test('Full Phase 2 End-To-End Journey: Product -> Creative -> Content -> Views -
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ url: productUrl })
     });
-    assert.equal(genRes.status, 200);
+    assert.equal(genRes.status, 200, await genRes.clone().text());
     const genData = await genRes.json();
     assert.ok(genData.result.generation.content.videoScript);
 
@@ -60,7 +62,7 @@ test('Full Phase 2 End-To-End Journey: Product -> Creative -> Content -> Views -
     const viewRes = await fetch(`http://127.0.0.1:${port}/api/analytics/views`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ contentId: 'c_e2e', platform: 'instagram', publishedAt: new Date().toISOString(), views: 1000, likes: 20, comments: 2, shares: 1, saves: 5, followersGained: 2 })
+      body: JSON.stringify({ contentId: 'c_e2e', productId: 'p_e2e', platform: 'instagram', publishedAt: new Date().toISOString(), views: 1000, likes: 20, comments: 2, shares: 1, saves: 5, followersGained: 2 })
     });
     assert.equal(viewRes.status, 200);
 
@@ -68,7 +70,7 @@ test('Full Phase 2 End-To-End Journey: Product -> Creative -> Content -> Views -
     const clickRes = await fetch(`http://127.0.0.1:${port}/api/affiliate/clicks`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ contentId: 'c_e2e', productId: 'p_e2e', affiliateNetwork: 'myntra', platform: 'instagram' })
+      body: JSON.stringify({ clickId: 'click_e2e', contentId: 'c_e2e', productId: 'p_e2e', affiliateNetwork: 'myntra', platform: 'instagram' })
     });
     assert.equal(clickRes.status, 200);
 
@@ -76,7 +78,7 @@ test('Full Phase 2 End-To-End Journey: Product -> Creative -> Content -> Views -
     const orderRes = await fetch(`http://127.0.0.1:${port}/api/affiliate/orders`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ contentId: 'c_e2e', productId: 'p_e2e', orderValue: 298, commission: 29.8, commissionStatus: 'confirmed' })
+      body: JSON.stringify({ orderId: 'ord_e2e', contentId: 'c_e2e', productId: 'p_e2e', orderValue: 298, commission: 29.8, commissionStatus: 'confirmed' })
     });
     assert.equal(orderRes.status, 200);
 
