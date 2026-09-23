@@ -54,7 +54,7 @@ test('Full Phase 2 End-To-End Journey: Product -> Creative -> Content -> Views -
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ url: productUrl })
     });
-    assert.equal(genRes.status, 200);
+    assert.equal(genRes.status, 200, await genRes.clone().text());
     const genData = await genRes.json();
     assert.ok(genData.result.generation.content.videoScript);
 
