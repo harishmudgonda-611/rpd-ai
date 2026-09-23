@@ -35,7 +35,7 @@ export async function generateRPDFromUrl(
     discountPercent: product.discountPercent.value,
     imageCount: product.images.length,
     title: product.title.value,
-    platform: extractionIntelligence.platform,
+    platform: extractionIntelligence.platform ?? undefined,
   });
 
   const assets = analyzeProductAssets(product.images);
