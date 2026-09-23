@@ -11,6 +11,7 @@ import { createAffiliateLink, getAffiliateLink, listAffiliateLinks, registerAffi
 import { rateLimit, requireAdmin, requestId, readBody } from './security.js';
 import { createZip } from './zip.js';
 import { upsertProduct, listProducts, publishProduct } from './products.js';
+import { importAffiliateCsv } from './affiliate-import.js';
 
 const json = (res: any, status: number, body: unknown) => {
   res.writeHead(status, {
@@ -343,6 +344,16 @@ export function createRPDServer() {
       return json(res, 200, { ok: true, order });
     } catch (error) {
       return json(res, 500, { ok: false, error: 'Failed to log affiliate order' });
+    }
+  }
+
+  if (req.method === 'POST' && req.url === '/api/affiliate/import') {
+    try {
+      const csv = await readBody(req, 2 * 1024 * 1024);
+      const result = await importAffiliateCsv(csv);
+      return json(res, 200, { ok: true, result });
+    } catch (error) {
+      return json(res, 400, { ok: false, error: error instanceof Error ? error.message : 'Affiliate CSV import failed' });
     }
   }
 
