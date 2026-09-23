@@ -16,4 +16,4 @@ COPY --from=build /app/modules ./modules
 COPY --from=build /app/data/schema.sql ./data/schema.sql
 EXPOSE 8787
 USER node
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/src/server.js"]
