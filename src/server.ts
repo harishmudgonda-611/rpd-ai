@@ -8,11 +8,12 @@ import { calculateRevenueMetrics } from '../modules/revenue-intelligence/engine.
 import { generateLearningRecommendations } from '../modules/learning-engine/engine.js';
 import { qualifyProduct } from '../modules/product-qualification/engine.js';
 import { createAffiliateLink, getAffiliateLink, listAffiliateLinks, registerAffiliateClick } from './affiliate.js';
-import { rateLimit, requireAdmin, requestId } from './security.js';
+import { rateLimit, requireAdmin, requestId, readBody } from './security.js';
+import { createZip } from './zip.js';
 import { upsertProduct, listProducts, publishProduct } from './products.js';
 
 const json = (res: any, status: number, body: unknown) => {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'x-request-id': requestId(), 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY', 'referrer-policy': 'strict-origin-when-cross-origin', 'content-security-policy': \"default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https:;\", 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS', 'access-control-allow-headers': 'content-type,authorization' });
+  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'x-request-id': requestId(), 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY', 'referrer-policy': 'strict-origin-when-cross-origin', 'content-security-policy': \"default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https:;\", 'access-control-allow-origin': process.env.PUBLIC_ORIGIN ?? 'null', 'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS', 'access-control-allow-headers': 'content-type,authorization' });
   res.end(JSON.stringify(body, null, 2));
 };
 
@@ -84,11 +85,7 @@ export function createRPDServer() {
 
   if (req.method === 'POST' && req.url === '/api/affiliate-links') {
     try {
-      let raw = '';
-      for await (const chunk of req) {
-        raw += chunk;
-        if (raw.length > 256 * 1024) return json(res, 413, { ok: false, error: 'Request too large' });
-      }
+      let raw = await readBody(req, 256 * 1024);
       const body = JSON.parse(raw || '{}');
       const link = await createAffiliateLink({
         productId: String(body.productId || '').trim(),
@@ -105,8 +102,7 @@ export function createRPDServer() {
   if (req.method === 'GET' && req.url === '/health') return json(res, 200, { ok: true, service: 'rpd-product-intelligence', version: '0.2.0' });
   if (req.method === 'POST' && req.url === '/api/rpd/generate') {
     try {
-      let raw = '';
-      for await (const chunk of req) raw += chunk;
+      let raw = await readBody(req, 1024 * 1024);
 
       const body = JSON.parse(raw || '{}');
 
@@ -165,8 +161,7 @@ export function createRPDServer() {
 
   if (req.method === 'POST' && req.url === '/api/product/qualify') {
     try {
-      let raw = '';
-      for await (const chunk of req) raw += chunk;
+      let raw = await readBody(req, 1024 * 1024);
       const body = JSON.parse(raw || '{}');
       const product = body.product ?? body;
       const result = qualifyProduct({
@@ -268,13 +263,11 @@ export function createRPDServer() {
       const body = JSON.parse(raw || '{}');
       const render = await renderRPD(body);
 
-      // Return ZIP metadata manifest and slide SVGs for client zipping
-      return json(res, 200, {
-        ok: true,
-        zipFilename: `rpd-carousel-${Date.now()}.zip`,
-        slideCount: render.slideCount,
-        assets: render.assets
-      });
+      const files = render.assets.map((asset) => ({ name: asset.path.split('/').pop() || asset.id, path: asset.path }));
+      const zip = await createZip(files);
+      res.writeHead(200, { 'content-type': 'application/zip', 'content-disposition': 'attachment; filename="rpd-carousel.zip"', 'content-length': String(zip.length), 'cache-control': 'no-store' });
+      res.end(zip);
+      return;
     } catch (error) {
       return json(res, 500, { ok: false, error: 'Failed to prepare ZIP export' });
     }
