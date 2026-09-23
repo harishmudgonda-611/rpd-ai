@@ -190,10 +190,13 @@ export async function fetchAndExtractProduct(
 
   const hostname = url.hostname.toLowerCase();
   const allowLocal = process.env.NODE_ENV === 'test' || process.env.RPD_ALLOW_LOCAL_EXTRACTION === 'true';
-  const supportedHost = allowLocal && (hostname === 'localhost' || hostname === '::1' || /^(127\\.|10\\.|192\\.168\\.|169\\.254\\.)/.test(hostname) || /^172\\.(1[6-9]|2[0-9]|3[0-1])\\./.test(hostname))
-    ? true
-    : ['myntra.com','amazon.in','amazon.com','flipkart.com','ajio.com','meesho.com','nykaa.com'].some(d => hostname === d || hostname.endsWith('.' + d));
-  const privateHost = !allowLocal && (hostname === 'localhost' || hostname === '::1' || /^(127\\.|10\\.|192\\.168\\.|169\\.254\\.)/.test(hostname) || /^172\\.(1[6-9]|2[0-9]|3[0-1])\\./.test(hostname));
+  const isLocalHost = hostname === 'localhost' || hostname === '::1' ||
+    /^(127\.|10\.|192\.168\.|169\.254\.)/.test(hostname) ||
+    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname);
+  const supportedMarketplace = ['myntra.com','amazon.in','amazon.com','flipkart.com','ajio.com','meesho.com','nykaa.com']
+    .some(d => hostname === d || hostname.endsWith('.' + d));
+  const supportedHost = supportedMarketplace || (allowLocal && isLocalHost);
+  const privateHost = !allowLocal && isLocalHost;
   if (!supportedHost || privateHost) {
     throw new ProductExtractionError('INVALID_URL','RPD extraction only accepts supported marketplace product URLs.');
   }
