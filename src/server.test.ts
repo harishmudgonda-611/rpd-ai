@@ -27,7 +27,7 @@ test('GET /health returns service status', async () => {
     assert.equal(res.status, 200, await res.clone().text());
     const body = await res.json();
     assert.equal(body.ok, true);
-    assert.equal(body.service, 'rpd-product-intelligence');
+    assert.equal(body.service, 'rpd-money-engine');
   } finally {
     await close();
   }
