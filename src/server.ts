@@ -211,7 +211,14 @@ export function createRPDServer() {
       let raw=''; for await (const chunk of req) raw += chunk;
       const body=JSON.parse(raw||'{}');
       if(typeof body.id!=='string') return json(res,400,{ok:false,error:'id is required'});
-      if(body.published && typeof body.affiliateLinkId!=='string') return json(res,400,{ok:false,error:'affiliateLinkId is required before publishing'});
+      const existing=await import('./products.js').then(m=>m.getProduct(body.id));
+      if(!existing) return json(res,404,{ok:false,error:'Product not found'});
+      if(body.published){
+        if(existing.qualification?.publish===false) return json(res,409,{ok:false,error:'Product qualification does not allow publishing',qualification:existing.qualification});
+        if(typeof body.affiliateLinkId!=='string') return json(res,400,{ok:false,error:'affiliateLinkId is required before publishing'});
+        const link=await getAffiliateLink(body.affiliateLinkId);
+        if(!link || link.productId!==body.id) return json(res,400,{ok:false,error:'Affiliate link does not belong to this product'});
+      }
       const product=await publishProduct(body.id,Boolean(body.published),body.affiliateLinkId);
       if(!product) return json(res,404,{ok:false,error:'Product not found'});
       return json(res,200,{ok:true,product});
