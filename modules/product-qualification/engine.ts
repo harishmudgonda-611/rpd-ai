@@ -4,7 +4,7 @@ export type QualificationInput = {
   discountPercent?: number | null;
   imageCount?: number;
   title?: string;
-  platform?: string;
+  platform?: string | null;
 };
 
 export type QualificationResult = {
