@@ -24,7 +24,7 @@ test('GET /health returns service status', async () => {
 
   try {
     const res = await fetch(`http://127.0.0.1:${port}/health`);
-    assert.equal(res.status, 200);
+    assert.equal(res.status, 200, await res.clone().text());
     const body = await res.json();
     assert.equal(body.ok, true);
     assert.equal(body.service, 'rpd-product-intelligence');
