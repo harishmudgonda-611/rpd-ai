@@ -4,6 +4,8 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createRPDServer } from './server.js';
 
+process.env.RPD_ALLOW_LOCAL_EXTRACTION = 'true';
+
 function listenServer(server: ReturnType<typeof createRPDServer>): Promise<{ port: number; close: () => Promise<void> }> {
   return new Promise((resolve) => {
     server.listen(0, '127.0.0.1', () => {
