@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 
 const DATA_DIR = join(process.cwd(), 'data');
 
@@ -22,4 +22,4 @@ export async function dbUpsert<T>(table:string,row:unknown,onConflict:string):Pr
 export async function dbUpdate<T>(table:string,row:unknown,filter:string):Promise<T|null>{const r=await supabaseFetch<T|T[]>(table,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(row)},'?'+filter);return Array.isArray(r)?(r[0]||null):r}
 export async function dbDelete(table:string,filter:string):Promise<void>{ await supabaseFetch(table,{method:'DELETE'},'?'+filter); }
 export async function localRead<T>(filename:string,fallback:T):Promise<T>{await mkdir(DATA_DIR,{recursive:true});try{return JSON.parse(await readFile(join(DATA_DIR,filename),'utf8')) as T}catch{return fallback}}
-export async function localWrite(filename:string,value:unknown):Promise<void>{await mkdir(DATA_DIR,{recursive:true});await writeFile(join(DATA_DIR,filename),JSON.stringify(value,null,2),'utf8')}
+export async function localWrite(filename:string,value:unknown):Promise<void>{await mkdir(dirname(join(DATA_DIR,filename)),{recursive:true});await writeFile(join(DATA_DIR,filename),JSON.stringify(value,null,2),'utf8')}
