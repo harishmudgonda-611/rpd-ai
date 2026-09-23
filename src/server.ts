@@ -69,7 +69,7 @@ export function createRPDServer() {
     try {
       const { readFile } = await import('node:fs/promises');
       const { join } = await import('node:path');
-      const fileName = req.url.replace('/modules/rpd-production/output/', '');
+      const fileName = decodeURIComponent(req.url.replace('/modules/rpd-production/output/', '')); if (fileName !== require('node:path').basename(fileName)) return json(res, 400, { ok: false, error: 'Invalid asset path' });
       const filePath = join(process.cwd(), 'modules', 'rpd-production', 'output', fileName);
       const content = await readFile(filePath, 'utf8');
       const contentType = fileName.endsWith('.svg') ? 'image/svg+xml' : fileName.endsWith('.html') ? 'text/html' : 'text/plain';
