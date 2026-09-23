@@ -195,7 +195,7 @@ export function createRPDServer() {
       const body = JSON.parse(raw || '{}');
       if (typeof body.url !== 'string' || !body.url.trim()) return json(res, 400, { ok: false, error: 'url is required' });
       const product = await fetchAndExtractProduct(body.url.trim());
-      const qualification = qualifyProduct({ price: product.price.value, mrp: product.mrp.value, discountPercent: product.discountPercent.value, imageCount: product.images.length, title: product.title.value, platform: new URL(product.sourceUrl).hostname });
+      const qualification = qualifyProduct({ price: product.price.value, mrp: product.mrp.value, discountPercent: product.discountPercent.value, imageCount: product.images.length, title: product.title.value, platform: new URL(product.sourceUrl ?? body.url.trim()).hostname });
       const stored = await upsertProduct(product, qualification);
       return json(res, 200, { ok: true, product, qualification, stored });
     } catch (error) {
