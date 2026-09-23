@@ -34,7 +34,7 @@ export async function generateRPDFromUrl(
     mrp: product.mrp.value,
     discountPercent: product.discountPercent.value,
     imageCount: product.images.length,
-    title: product.title.value,
+    title: product.title.value ?? undefined,
     ...(extractionIntelligence.platform == null ? {} : { platform: extractionIntelligence.platform }),
   });
 
