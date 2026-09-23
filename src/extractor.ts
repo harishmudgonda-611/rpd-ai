@@ -240,11 +240,9 @@ export async function fetchAndExtractProduct(
     if (!location) throw new ProductExtractionError('UPSTREAM_HTTP_ERROR','Product source returned an invalid redirect.');
     currentUrl = new URL(location, currentUrl);
     if (!['http:','https:'].includes(currentUrl.protocol)) throw new ProductExtractionError('INVALID_URL','Product source redirected to an unsupported protocol.');
-    if (!(supportedMarketplace || (allowLocal && isLocalHost))) {
-      const redirectedHost = currentUrl.hostname.toLowerCase();
-      const redirectedSupported = ['myntra.com','amazon.in','amazon.com','flipkart.com','ajio.com','meesho.com','nykaa.com'].some(d => redirectedHost === d || redirectedHost.endsWith('.' + d));
-      if (!redirectedSupported && !(allowLocal && redirectedHost === hostname)) throw new ProductExtractionError('INVALID_URL','Product source redirected outside supported marketplaces.');
-    }
+    const redirectedHost = currentUrl.hostname.toLowerCase();
+    const redirectedSupported = ['myntra.com','amazon.in','amazon.com','flipkart.com','ajio.com','meesho.com','nykaa.com'].some(d => redirectedHost === d || redirectedHost.endsWith('.' + d));
+    if (!redirectedSupported && !(allowLocal && redirectedHost === hostname)) throw new ProductExtractionError('INVALID_URL','Product source redirected outside supported marketplaces.');
     if (redirectCount === 5) throw new ProductExtractionError('UPSTREAM_HTTP_ERROR','Too many redirects while fetching product data.');
   }
 
