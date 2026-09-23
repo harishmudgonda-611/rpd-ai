@@ -49,3 +49,79 @@ create index if not exists affiliate_events_created_idx on affiliate_events(crea
 alter table products enable row level security;
 alter table affiliate_links enable row level security;
 alter table affiliate_events enable row level security;
+
+create table if not exists rpd_projects (
+  id text primary key,
+  title text not null,
+  product_url text not null default '',
+  template text not null default 'rpd-editorial',
+  product jsonb,
+  generation jsonb,
+  slides jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists rpd_projects_updated_idx on rpd_projects(updated_at desc);
+alter table rpd_projects enable row level security;
+
+create table if not exists content_performance (
+  content_id text not null,
+  platform text not null,
+  published_at timestamptz not null,
+  views bigint not null default 0,
+  likes bigint not null default 0,
+  comments bigint not null default 0,
+  shares bigint not null default 0,
+  saves bigint not null default 0,
+  followers_gained bigint not null default 0,
+  impressions bigint,
+  watch_time_seconds numeric,
+  completion_rate_percent numeric,
+  primary key(content_id, platform)
+);
+create table if not exists affiliate_clicks (
+  click_id text primary key,
+  content_id text not null,
+  product_id text not null,
+  affiliate_network text not null,
+  affiliate_link text not null default '',
+  tracking_id text not null,
+  platform text not null,
+  campaign text,
+  creative_id text,
+  timestamp timestamptz not null
+);
+create table if not exists affiliate_orders (
+  order_id text primary key,
+  content_id text not null,
+  product_id text not null,
+  click_id text,
+  affiliate_network text not null,
+  order_timestamp timestamptz not null,
+  order_status text not null,
+  order_value numeric not null default 0,
+  commission numeric not null default 0,
+  commission_status text not null,
+  currency text not null default 'INR'
+);
+create table if not exists learning_signals (
+  signal_id text primary key,
+  content_id text not null,
+  product_id text not null,
+  platform text not null,
+  format text not null,
+  hook_type text not null,
+  cta_type text not null,
+  creative_angle text not null,
+  template text not null,
+  views bigint not null default 0,
+  clicks bigint not null default 0,
+  orders bigint not null default 0,
+  commission numeric not null default 0,
+  epc numeric not null default 0,
+  recorded_at timestamptz not null
+);
+alter table content_performance enable row level security;
+alter table affiliate_clicks enable row level security;
+alter table affiliate_orders enable row level security;
+alter table learning_signals enable row level security;
