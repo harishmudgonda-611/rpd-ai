@@ -1,58 +1,10 @@
 import { randomBytes } from 'node:crypto';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
-
-export type AffiliateLink = {
-  id: string;
-  productId: string;
-  network: string;
-  destinationUrl: string;
-  label?: string;
-  createdAt: string;
-  clicks: number;
-};
-
-const FILE = join(process.cwd(), 'data', 'affiliate-links.json');
-
-async function readAll(): Promise<AffiliateLink[]> {
-  await mkdir(join(process.cwd(), 'data'), { recursive: true });
-  try { return JSON.parse(await readFile(FILE, 'utf8')); } catch { return []; }
-}
-async function writeAll(items: AffiliateLink[]) {
-  await mkdir(join(process.cwd(), 'data'), { recursive: true });
-  await writeFile(FILE, JSON.stringify(items, null, 2), 'utf8');
-}
-
-function validHttpUrl(value: string): boolean {
-  try { const u = new URL(value); return u.protocol === 'https:' || u.protocol === 'http:'; } catch { return false; }
-}
-
-export async function createAffiliateLink(input: Omit<AffiliateLink, 'id'|'createdAt'|'clicks'>): Promise<AffiliateLink> {
-  if (!input.productId || !input.network || !validHttpUrl(input.destinationUrl)) throw new Error('Invalid affiliate link');
-  const item: AffiliateLink = {
-    ...input,
-    id: randomBytes(9).toString('base64url'),
-    createdAt: new Date().toISOString(),
-    clicks: 0
-  };
-  const all = await readAll();
-  all.push(item);
-  await writeAll(all);
-  return item;
-}
-
-export async function getAffiliateLink(id: string): Promise<AffiliateLink | null> {
-  const all = await readAll();
-  return all.find(x => x.id === id) ?? null;
-}
-
-export async function listAffiliateLinks(): Promise<AffiliateLink[]> { return readAll(); }
-
-export async function registerAffiliateClick(id: string): Promise<AffiliateLink | null> {
-  const all = await readAll();
-  const item = all.find(x => x.id === id);
-  if (!item) return null;
-  item.clicks += 1;
-  await writeAll(all);
-  return item;
-}
+import { dbInsert, dbSelect, dbUpdate, localRead, localWrite, requireProductionStorage, useSupabase } from './storage.js';
+export type AffiliateLink={id:string;productId:string;network:string;destinationUrl:string;label?:string;createdAt:string;clicks:number};
+const file='affiliate-links.json';
+const valid=(v:string)=>{try{const u=new URL(v);return u.protocol==='https:'||u.protocol==='http:';}catch{return false}};
+const fromDb=(r:any):AffiliateLink=>({id:r.id,productId:r.product_id,network:r.network,destinationUrl:r.destination_url,label:r.label||undefined,createdAt:r.created_at,clicks:Number(r.clicks||0)});
+export async function createAffiliateLink(input:Omit<AffiliateLink,'id'|'createdAt'|'clicks'>):Promise<AffiliateLink>{requireProductionStorage();if(!input.productId||!input.network||!valid(input.destinationUrl))throw new Error('Invalid affiliate link');const item={...input,id:randomBytes(9).toString('base64url'),createdAt:new Date().toISOString(),clicks:0};if(useSupabase())return fromDb(await dbInsert<any>('affiliate_links',{id:item.id,product_id:item.productId,network:item.network,destination_url:item.destinationUrl,label:item.label||null,clicks:0,created_at:item.createdAt}));const all=await localRead<AffiliateLink[]>(file,[]);all.push(item);await localWrite(file,all);return item}
+export async function getAffiliateLink(id:string):Promise<AffiliateLink|null>{requireProductionStorage();if(useSupabase()){const r=await dbSelect<any>('affiliate_links','?id=eq.'+encodeURIComponent(id)+'&limit=1');return r[0]?fromDb(r[0]):null}return (await localRead<AffiliateLink[]>(file,[])).find(x=>x.id===id)||null}
+export async function listAffiliateLinks():Promise<AffiliateLink[]>{requireProductionStorage();if(useSupabase())return (await dbSelect<any>('affiliate_links','?order=created_at.desc')).map(fromDb);return localRead<AffiliateLink[]>(file,[])}
+export async function registerAffiliateClick(id:string):Promise<AffiliateLink|null>{requireProductionStorage();const item=await getAffiliateLink(id);if(!item)return null;if(useSupabase()){const updated=await dbUpdate<any>('affiliate_links',{clicks:item.clicks+1},'id=eq.'+encodeURIComponent(id));return updated?fromDb(updated):null}const all=await localRead<AffiliateLink[]>(file,[]),local=all.find(x=>x.id===id);if(!local)return null;local.clicks++;await localWrite(file,all);return local}
