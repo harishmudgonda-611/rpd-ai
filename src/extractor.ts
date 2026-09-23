@@ -224,7 +224,7 @@ export async function fetchAndExtractProduct(
   };
 
   await assertPublicHostname(url.hostname);
-  let response: Response;
+  let response: Response | undefined;
   let currentUrl = url;
   for (let redirectCount = 0; redirectCount <= 5; redirectCount += 1) {
     await assertPublicHostname(currentUrl.hostname);
@@ -246,7 +246,8 @@ export async function fetchAndExtractProduct(
     if (redirectCount === 5) throw new ProductExtractionError('UPSTREAM_HTTP_ERROR','Too many redirects while fetching product data.');
   }
 
-  const html = await response!.text();
+  if (!response) throw new ProductExtractionError('UPSTREAM_HTTP_ERROR','Product source request did not return a response.');
+  const html = await response.text();
 
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
