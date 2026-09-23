@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 
 const WINDOW_MS = 60_000;
 const LIMIT = 60;
@@ -23,7 +23,7 @@ export function rateLimit(req: any): boolean {
 }
 
 export function requestId(): string {
-  return createHash('sha256').update(`${Date.now()}-${Math.random()}`).digest('hex').slice(0, 16);
+  return createHash('sha256').update(`${Date.now()}-${randomBytes(16).toString('hex')}`).digest('hex').slice(0, 16);
 }
 
 export function requireAdmin(req: any): boolean {
