@@ -264,14 +264,14 @@ export async function fetchAndExtractProduct(
         (a === 100 && b >= 64 && b <= 127) ||
         (a === 169 && b === 254) ||
         (a === 172 && b >= 16 && b <= 31) ||
-        (a === 192 && (b === 0 || b === 168) ) ||
+        (a === 192 && (b === 0 || b === 2 || b === 168)) ||
         (a === 192 && b === 88 && c === 99) ||
         (a === 198 && (b === 18 || b === 19 || b === 51 && c === 100)) ||
         (a === 203 && b === 0 && c === 113);
     }
     if (isIP(address) === 6) {
       const normalized = address.toLowerCase().split('%')[0];
-      const mapped = normalized.match(/^(?:::ffff:|::)(\\d+\\.\\d+\\.\\d+\\.\\d+)$/);
+      const mapped = normalized.match(/^(?:::ffff:|::)(\d+\.\d+\.\d+\.\d+)$/);
       if (mapped) return isPrivateAddress(mapped[1]);
       if (normalized === '::' || normalized === '::1' ||
           normalized.startsWith('fc') || normalized.startsWith('fd') ||
