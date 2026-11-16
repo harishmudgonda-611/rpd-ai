@@ -20,7 +20,7 @@ The default branch already contains a Cheerio-based product extractor and tests 
 
 ## Implemented in this branch
 - The existing HTTP product extractor now checks the marketplace `robots.txt` policy before requesting a product page. A policy fetch error, redirect, access denial or non-recoverable status fails closed; `404`/`410` means no published robots policy was found.
-- Product-page requests have a 15-second abort timeout and a 2 MB streamed response cap. Robots files have an independent 8-second timeout and 256 KB cap.
+- Product-page requests have a 15-second abort timeout and a 2 MB streamed response cap. Robots files have an independent 8-second timeout and 256 KB cap. Robots policy is checked again for each redirect destination.
 - Only HTML/XHTML product responses are parsed. Redirects remain manual and are revalidated against supported marketplaces and public DNS addresses.
 - `src/robots.ts` implements a small, tested Allow/Disallow evaluator for common user-agent, prefix and wildcard rules. It is intentionally conservative and is not a substitute for full RFC 9309 conformance.
 - Existing product extraction, pricing qualification and downstream workflows remain unchanged. No browser automation, login, CAPTCHA handling, anti-bot bypass, paid API or order execution was added.
