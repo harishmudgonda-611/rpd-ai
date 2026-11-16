@@ -23,7 +23,7 @@ export function robotsAllows(robotsText: string, targetPath: string, userAgent =
   const matching = selected.flatMap(group => group.rules).filter(rule => {
     const anchored = rule.path.endsWith('$');
     const raw = anchored ? rule.path.slice(0, -1) : rule.path;
-    const pattern = raw.split('*').map(part => part.replace(/[.*+?^$()|[\\]\\\\]/g, '\\$&')).join('.*');
+    const pattern = raw.split('*').map(part => part.replace(/[.*+?^$()|[\]\\]/g, '\\$&')).join('.*');
     try { return new RegExp('^' + pattern + (anchored ? '$' : '')).test(targetPath); } catch { return false; }
   });
   if (!matching.length) return true;
