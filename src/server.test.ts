@@ -225,6 +225,7 @@ test('POST /api/rpd/generate handles end-to-end carousel generation request', as
   `;
 
   const htmlServer = createServer((req, res) => {
+    if (req.url === '/robots.txt') { res.writeHead(404); res.end(); return; }
     res.writeHead(200, { 'content-type': 'text/html' });
     res.end(mockProductHtml);
   });
