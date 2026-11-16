@@ -37,6 +37,7 @@ test('Full Phase 2 End-To-End Journey: Product -> Creative -> Content -> Views -
   `;
 
   const htmlServer = createServer((req, res) => {
+    if (req.url === '/robots.txt') { res.writeHead(404); res.end(); return; }
     res.writeHead(200, { 'content-type': 'text/html' });
     res.end(mockProductHtml);
   });
