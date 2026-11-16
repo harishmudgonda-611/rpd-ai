@@ -23,8 +23,3 @@ test('supports wildcard path segments and end anchors', () => {
   assert.equal(robotsAllows(rules, '/private/public'), true);
   assert.equal(robotsAllows(rules, '/private/public/child'), false);
 });
-;
-  assert.equal(robotsAllows(rules, '/private/secret'), false);
-  assert.equal(robotsAllows(rules, '/private/public'), true);
-  assert.equal(robotsAllows(rules, '/private/public/child'), false);
-});
