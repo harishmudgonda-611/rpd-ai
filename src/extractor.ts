@@ -266,6 +266,10 @@ export async function fetchAndExtractProduct(
   }
   if (robotsResponse.ok) {
     const robotsText = await readBoundedResponse(robotsResponse, 256_000);
+    const robotsContentType = robotsResponse.headers.get('content-type') ?? '';
+    if (/text\\/html/i.test(robotsContentType) || /^\\s*(?:<!doctype\\s+html|<html\\b)/i.test(robotsText)) {
+      throw new ProductExtractionError('UPSTREAM_ACCESS_BLOCKED', 'robots.txt returned an HTML or access-block page; extraction was stopped.');
+    }
     if (!robotsAllows(robotsText, url.pathname + url.search, crawlerAgent)) {
       throw new ProductExtractionError('UPSTREAM_ACCESS_BLOCKED', 'Marketplace robots.txt disallows automated access to this product URL.');
     }
