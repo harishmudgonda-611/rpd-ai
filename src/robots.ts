@@ -24,7 +24,7 @@ export function robotsAllows(robotsText: string, targetPath: string, userAgent =
     const anchored = rule.path.endsWith('$');
     const raw = anchored ? rule.path.slice(0, -1) : rule.path;
     const pattern = raw.split('*').map(part => part.replace(/[.*+?^$()|[\\]\\\\]/g, '\\$&')).join('.*');
-    try { return new RegExp('^' + pattern + (anchored ? '.test(targetPath); } catch { return false; } : '')).test(targetPath); } catch { return false; }
+    try { return new RegExp('^' + pattern + (anchored ? '$' : '')).test(targetPath); } catch { return false; }
   });
   if (!matching.length) return true;
   matching.sort((a, b) => b.path.replace(/[\*$]/g, '').length - a.path.replace(/[\*$]/g, '').length || Number(b.allow) - Number(a.allow));
