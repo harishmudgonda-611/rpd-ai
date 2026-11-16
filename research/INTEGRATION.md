@@ -16,4 +16,4 @@ Keep original URL, merchant/source identity, retrieved_at, title, SKU/variant, o
 Use affiliate feeds/APIs where required; no CORS/proxy tricks, CAPTCHA or anti-bot bypass, login scraping or paywall evasion. Respect robots.txt, terms, rate limits and copyright. Allowlist domains, cap fetch size/time and sanitize outbound URLs against SSRF. Require human confirmation before publishing creatives or links.
 
 ## Delivery status
-This branch adds a design contract only. No dependencies or runtime extraction behavior are changed; implementation must add parser fixtures and regression tests before activation.
+The default branch already contains a Cheerio-based product extractor and tests for JSON-LD, Open Graph, price/currency, colors, images, ratings, and access-blocked pages. This PR documents the appropriate optional adapter boundaries and provenance requirements; it does not replace the existing extractor or add a new crawler. The existing extractor must remain the source of product facts, with explicit evidence and warnings.
