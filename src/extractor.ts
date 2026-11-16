@@ -195,6 +195,32 @@ async function readBoundedResponse(response: Response, maxBytes: number): Promis
   return new TextDecoder('utf-8', { fatal: false }).decode(merged);
 }
 
+async function assertRobotsAllowed(url: URL, crawlerAgent: string): Promise<void> {
+  let robotsResponse: Response;
+  try {
+    robotsResponse = await fetch(new URL('/robots.txt', url.origin), {
+      redirect: 'manual',
+      signal: AbortSignal.timeout(8000),
+      headers: { 'user-agent': crawlerAgent, 'accept': 'text/plain' },
+    });
+  } catch {
+    throw new ProductExtractionError('UPSTREAM_ACCESS_BLOCKED', 'Could not verify the marketplace robots.txt policy; extraction was stopped.');
+  }
+  if ([301, 302, 303, 307, 308, 401, 403, 429].includes(robotsResponse.status) || (!robotsResponse.ok && ![404, 410].includes(robotsResponse.status))) {
+    throw new ProductExtractionError('UPSTREAM_ACCESS_BLOCKED', 'Marketplace robots.txt policy could not be verified; extraction was stopped.');
+  }
+  if (robotsResponse.ok) {
+    const robotsText = await readBoundedResponse(robotsResponse, 256_000);
+    const robotsContentType = robotsResponse.headers.get('content-type') ?? '';
+    if (/text\\/html/i.test(robotsContentType) || /^\\s*(?:<!doctype\\s+html|<html\\b)/i.test(robotsText)) {
+      throw new ProductExtractionError('UPSTREAM_ACCESS_BLOCKED', 'robots.txt returned an HTML or access-block page; extraction was stopped.');
+    }
+    if (!robotsAllows(robotsText, url.pathname + url.search, crawlerAgent)) {
+      throw new ProductExtractionError('UPSTREAM_ACCESS_BLOCKED', 'Marketplace robots.txt disallows automated access to this product URL.');
+    }
+  }
+}
+
 export async function fetchAndExtractProduct(
   sourceUrl: string,
 ): Promise<NormalizedProduct> {
@@ -251,33 +277,11 @@ export async function fetchAndExtractProduct(
 
   await assertPublicHostname(url.hostname);
   const crawlerAgent = 'RPD-Product-Intelligence/0.2 (+local-user-request)';
-  let robotsResponse: Response;
-  try {
-    robotsResponse = await fetch(new URL('/robots.txt', url.origin), {
-      redirect: 'manual',
-      signal: AbortSignal.timeout(8000),
-      headers: { 'user-agent': crawlerAgent, 'accept': 'text/plain' },
-    });
-  } catch {
-    throw new ProductExtractionError('UPSTREAM_ACCESS_BLOCKED', 'Could not verify the marketplace robots.txt policy; extraction was stopped.');
-  }
-  if ([301, 302, 303, 307, 308, 401, 403, 429].includes(robotsResponse.status) || (!robotsResponse.ok && ![404, 410].includes(robotsResponse.status))) {
-    throw new ProductExtractionError('UPSTREAM_ACCESS_BLOCKED', 'Marketplace robots.txt policy could not be verified; extraction was stopped.');
-  }
-  if (robotsResponse.ok) {
-    const robotsText = await readBoundedResponse(robotsResponse, 256_000);
-    const robotsContentType = robotsResponse.headers.get('content-type') ?? '';
-    if (/text\\/html/i.test(robotsContentType) || /^\\s*(?:<!doctype\\s+html|<html\\b)/i.test(robotsText)) {
-      throw new ProductExtractionError('UPSTREAM_ACCESS_BLOCKED', 'robots.txt returned an HTML or access-block page; extraction was stopped.');
-    }
-    if (!robotsAllows(robotsText, url.pathname + url.search, crawlerAgent)) {
-      throw new ProductExtractionError('UPSTREAM_ACCESS_BLOCKED', 'Marketplace robots.txt disallows automated access to this product URL.');
-    }
-  }
   let response: Response | undefined;
   let currentUrl = url;
   for (let redirectCount = 0; redirectCount <= 5; redirectCount += 1) {
     await assertPublicHostname(currentUrl.hostname);
+    await assertRobotsAllowed(currentUrl, crawlerAgent);
     response = await fetch(currentUrl, {
       redirect: 'manual',
       signal: AbortSignal.timeout(15000),
