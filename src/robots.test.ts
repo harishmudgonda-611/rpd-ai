@@ -18,7 +18,7 @@ test('prefers rules for the matching crawler over wildcard rules', () => {
 });
 
 test('supports wildcard path segments and end anchors', () => {
-  const rules = 'User-agent: *\nDisallow: /private/*\nAllow: /private/public
+  const rules = 'User-agent: *\nDisallow: /private/*\nAllow: /private/public$';
   assert.equal(robotsAllows(rules, '/private/secret'), false);
   assert.equal(robotsAllows(rules, '/private/public'), true);
   assert.equal(robotsAllows(rules, '/private/public/child'), false);
