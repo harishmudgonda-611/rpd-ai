@@ -21,8 +21,10 @@ export function robotsAllows(robotsText: string, targetPath: string, userAgent =
   const specific = groups.filter(group => group.agents.some(name => name !== '*' && agent.includes(name)));
   const selected = specific.length ? specific : groups.filter(group => group.agents.includes('*'));
   const matching = selected.flatMap(group => group.rules).filter(rule => {
-    const pattern = rule.path.replace(/[.+?^$()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\$$/, '$');
-    try { return new RegExp('^' + pattern).test(targetPath); } catch { return false; }
+    const anchored = rule.path.endsWith('$');
+    const raw = anchored ? rule.path.slice(0, -1) : rule.path;
+    const pattern = raw.split('*').map(part => part.replace(/[.*+?^$()|[\\]\\\\]/g, '\\$&')).join('.*');
+    try { return new RegExp('^' + pattern + (anchored ? '.test(targetPath); } catch { return false; } : '')).test(targetPath); } catch { return false; }
   });
   if (!matching.length) return true;
   matching.sort((a, b) => b.path.replace(/[\*$]/g, '').length - a.path.replace(/[\*$]/g, '').length || Number(b.allow) - Number(a.allow));
