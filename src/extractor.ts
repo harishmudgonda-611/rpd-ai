@@ -3,6 +3,7 @@ import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import type { NormalizedProduct } from './types.js';
 import { ProductExtractionError } from './extraction-error.js';
+import { robotsAllows } from './robots.js';
 
 const first = (...values: Array<unknown>) => values.find(v => typeof v === 'string' ? v.trim().length > 0 : v !== null && v !== undefined);
 const clean = (v: unknown) => typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : null;
@@ -169,6 +170,57 @@ function extractionQuality(product: NormalizedProduct): number {
   return score;
 }
 
+
+async function readBoundedResponse(response: Response, maxBytes: number): Promise<string> {
+  const declaredLength = Number(response.headers.get('content-length') ?? 0);
+  if (declaredLength > maxBytes) throw new ProductExtractionError('UPSTREAM_HTTP_ERROR', 'Product source response exceeds the configured size limit.');
+  if (!response.body) {
+    const text = await response.text();
+    if (new TextEncoder().encode(text).byteLength > maxBytes) throw new ProductExtractionError('UPSTREAM_HTTP_ERROR', 'Product source response exceeds the configured size limit.');
+    return text;
+  }
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) { await reader.cancel(); throw new ProductExtractionError('UPSTREAM_HTTP_ERROR', 'Product source response exceeds the configured size limit.'); }
+    chunks.push(value);
+  }
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.byteLength; }
+  return new TextDecoder('utf-8', { fatal: false }).decode(merged);
+}
+
+async function assertRobotsAllowed(url: URL, crawlerAgent: string): Promise<void> {
+  let robotsResponse: Response;
+  try {
+    robotsResponse = await fetch(new URL('/robots.txt', url.origin), {
+      redirect: 'manual',
+      signal: AbortSignal.timeout(8000),
+      headers: { 'user-agent': crawlerAgent, 'accept': 'text/plain' },
+    });
+  } catch {
+    throw new ProductExtractionError('UPSTREAM_ACCESS_BLOCKED', 'Could not verify the marketplace robots.txt policy; extraction was stopped.');
+  }
+  if ([301, 302, 303, 307, 308, 401, 403, 429].includes(robotsResponse.status) || (!robotsResponse.ok && ![404, 410].includes(robotsResponse.status))) {
+    throw new ProductExtractionError('UPSTREAM_ACCESS_BLOCKED', 'Marketplace robots.txt policy could not be verified; extraction was stopped.');
+  }
+  if (robotsResponse.ok) {
+    const robotsText = await readBoundedResponse(robotsResponse, 256_000);
+    const robotsContentType = robotsResponse.headers.get('content-type') ?? '';
+    if (/text\/html/i.test(robotsContentType) || /^\s*(?:<!doctype\s+html|<html\b)/i.test(robotsText)) {
+      throw new ProductExtractionError('UPSTREAM_ACCESS_BLOCKED', 'robots.txt returned an HTML or access-block page; extraction was stopped.');
+    }
+    if (!robotsAllows(robotsText, url.pathname + url.search, crawlerAgent)) {
+      throw new ProductExtractionError('UPSTREAM_ACCESS_BLOCKED', 'Marketplace robots.txt disallows automated access to this product URL.');
+    }
+  }
+}
+
 export async function fetchAndExtractProduct(
   sourceUrl: string,
 ): Promise<NormalizedProduct> {
@@ -205,16 +257,31 @@ export async function fetchAndExtractProduct(
 
   const platform = platformFromHostname(url.hostname);
 
-  const isPrivateAddress = (address: string) => {
+  const isPrivateAddress = (address: string): boolean => {
     if (isIP(address) === 4) {
-      const [a,b,c] = address.split('.').map(Number);
-      return a === 10 || a === 127 || a === 0 || a === 169 && b === 254 || a === 192 && b === 168 || a === 172 && b >= 16 && b <= 31;
+      const [a, b, c] = address.split('.').map(Number);
+      return a === 0 || a === 10 || a === 127 || a >= 224 ||
+        (a === 100 && b >= 64 && b <= 127) ||
+        (a === 169 && b === 254) ||
+        (a === 172 && b >= 16 && b <= 31) ||
+        (a === 192 && (b === 0 || b === 2 || b === 168)) ||
+        (a === 192 && b === 88 && c === 99) ||
+        (a === 198 && (b === 18 || b === 19 || b === 51 && c === 100)) ||
+        (a === 203 && b === 0 && c === 113);
     }
     if (isIP(address) === 6) {
-      const normalized = address.toLowerCase();
-      return normalized === '::1' || normalized === '::' || normalized.startsWith('fc') || normalized.startsWith('fd') || normalized.startsWith('fe80:');
+      const normalized = address.toLowerCase().split('%')[0];
+      const mapped = normalized.match(/^(?:::ffff:|::)(\d+\.\d+\.\d+\.\d+)$/);
+      if (mapped) return isPrivateAddress(mapped[1]);
+      if (normalized === '::' || normalized === '::1' ||
+          normalized.startsWith('fc') || normalized.startsWith('fd') ||
+          normalized.startsWith('fe8') || normalized.startsWith('fe9') ||
+          normalized.startsWith('fea') || normalized.startsWith('feb') ||
+          normalized.startsWith('ff') || normalized.startsWith('2001:db8:')) return true;
+      const firstGroup = Number.parseInt(normalized.split(':')[0] || '0', 16);
+      return (firstGroup & 0xe000) !== 0x2000;
     }
-    return false;
+    return true;
   };
 
   const assertPublicHostname = async (hostname: string) => {
@@ -224,14 +291,17 @@ export async function fetchAndExtractProduct(
   };
 
   await assertPublicHostname(url.hostname);
+  const crawlerAgent = 'RPD-Product-Intelligence/0.2 (+local-user-request)';
   let response: Response | undefined;
   let currentUrl = url;
   for (let redirectCount = 0; redirectCount <= 5; redirectCount += 1) {
     await assertPublicHostname(currentUrl.hostname);
+    await assertRobotsAllowed(currentUrl, crawlerAgent);
     response = await fetch(currentUrl, {
       redirect: 'manual',
+      signal: AbortSignal.timeout(15000),
       headers: {
-        'user-agent': 'RPD-Product-Intelligence/0.2 (+local-user-request)',
+        'user-agent': crawlerAgent,
         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       },
     });
@@ -247,7 +317,11 @@ export async function fetchAndExtractProduct(
   }
 
   if (!response) throw new ProductExtractionError('UPSTREAM_HTTP_ERROR','Product source request did not return a response.');
-  const html = await response.text();
+  const contentType = response.headers.get('content-type') ?? '';
+  if (contentType && !/^(text\/html|application\/xhtml\+xml)(?:\s*;|$)/i.test(contentType)) {
+    throw new ProductExtractionError('UPSTREAM_HTTP_ERROR', 'Product source did not return an HTML document.');
+  }
+  const html = await readBoundedResponse(response, 2_000_000);
 
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {

@@ -37,6 +37,7 @@ test('Full Phase 2 End-To-End Journey: Product -> Creative -> Content -> Views -
   `;
 
   const htmlServer = createServer((req, res) => {
+    if (req.url === '/robots.txt') { res.writeHead(404); res.end(); return; }
     res.writeHead(200, { 'content-type': 'text/html' });
     res.end(mockProductHtml);
   });
@@ -78,15 +79,15 @@ test('Full Phase 2 End-To-End Journey: Product -> Creative -> Content -> Views -
     const orderRes = await fetch(`http://127.0.0.1:${port}/api/affiliate/orders`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ orderId: 'ord_e2e', contentId: 'c_e2e', productId: 'p_e2e', orderValue: 298, commission: 29.8, commissionStatus: 'confirmed' })
+      body: JSON.stringify({ orderId: 'ord_e2e', contentId: 'c_e2e', productId: 'p_e2e', affiliateNetwork: 'myntra', orderValue: 298, commission: 29.8, commissionStatus: 'confirmed' })
     });
     assert.equal(orderRes.status, 200);
 
     // 5. Query Revenue & Learning Analytics
-    const summaryRes = await fetch(`http://127.0.0.1:${port}/api/analytics/summary`);
+    const summaryRes = await fetch(`http://127.0.0.1:${port}/api/analytics/summary?content_id=c_e2e&product_id=p_e2e&platform=instagram&affiliate_network=myntra`);
     assert.equal(summaryRes.status, 200);
     const summaryData = await summaryRes.json();
-    assert.ok(summaryData.revenue.totalCommission >= 29.8);
+    assert.ok(summaryData.revenue.totalCommission >= 29.8, JSON.stringify(summaryData));
     assert.ok(summaryData.recommendations);
   } finally {
     await close();

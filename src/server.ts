@@ -390,11 +390,16 @@ export function createRPDServer() {
     }
   }
 
-  if (req.method === 'GET' && req.url === '/api/analytics/summary') {
+  if (req.method === 'GET' && req.url?.startsWith('/api/analytics/summary')) {
     try {
-      const perfs = await getPerformance();
-      const clicks = await getClicks();
-      const orders = await getOrders();
+      const urlObj = new URL(req.url, 'http://localhost');
+      const content_id = urlObj.searchParams.get('content_id') || undefined;
+      const product_id = urlObj.searchParams.get('product_id') || undefined;
+      const platform = urlObj.searchParams.get('platform') || undefined;
+      const affiliate_network = urlObj.searchParams.get('affiliate_network') || undefined;
+      const perfs = await getPerformance({ content_id, platform });
+      const clicks = await getClicks({ content_id, product_id, platform, affiliate_network });
+      const orders = await getOrders({ content_id, product_id, affiliate_network });
       const revenue = calculateRevenueMetrics(perfs, clicks, orders);
       const recommendations = generateLearningRecommendations(perfs, clicks, orders);
       return json(res, 200, { ok: true, revenue, recommendations, counts: { views: perfs.length, clicks: clicks.length, orders: orders.length } });

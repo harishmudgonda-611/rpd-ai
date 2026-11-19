@@ -81,12 +81,19 @@ test('rejects Meesho-style access-blocked HTML instead of treating it as product
     ok: true,
     status: 200,
     url: sourceUrl,
+    headers: { get: (name: string) => name.toLowerCase() === 'content-type' ? 'text/html; charset=utf-8' : null },
     text: async () => blockedHtml,
   } as unknown as Response;
 
   const originalFetch = globalThis.fetch;
 
-  globalThis.fetch = (async () => response) as unknown as typeof fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const requested = new URL(String(input));
+    if (requested.pathname === '/robots.txt') {
+      return { ok: false, status: 404, headers: { get: () => null }, text: async () => '' } as unknown as Response;
+    }
+    return response;
+  }) as unknown as typeof fetch;
 
   try {
     await assert.rejects(
