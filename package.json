@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/server.ts",
-    "test": "tsx --test src/**/*.test.ts modules/product-qualification/engine.test.ts",
+    "test": "tsx --test --test-concurrency=1 src/**/*.test.ts modules/product-qualification/engine.test.ts",
     "postbuild": "cp -r src/public dist/public",
     "smoke": "node -e \"import('./dist/src/server.js').then(()=>console.log('RPD build smoke OK'))\"",
     "start": "node dist/src/server.js"
