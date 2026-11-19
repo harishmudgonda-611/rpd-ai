@@ -79,7 +79,7 @@ test('Full Phase 2 End-To-End Journey: Product -> Creative -> Content -> Views -
     const orderRes = await fetch(`http://127.0.0.1:${port}/api/affiliate/orders`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ orderId: 'ord_e2e', contentId: 'c_e2e', productId: 'p_e2e', orderValue: 298, commission: 29.8, commissionStatus: 'confirmed' })
+      body: JSON.stringify({ orderId: 'ord_e2e', contentId: 'c_e2e', productId: 'p_e2e', affiliateNetwork: 'myntra', orderValue: 298, commission: 29.8, commissionStatus: 'confirmed' })
     });
     assert.equal(orderRes.status, 200);
 
