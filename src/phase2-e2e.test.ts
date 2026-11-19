@@ -84,7 +84,7 @@ test('Full Phase 2 End-To-End Journey: Product -> Creative -> Content -> Views -
     assert.equal(orderRes.status, 200);
 
     // 5. Query Revenue & Learning Analytics
-    const summaryRes = await fetch(`http://127.0.0.1:${port}/api/analytics/summary`);
+    const summaryRes = await fetch(`http://127.0.0.1:${port}/api/analytics/summary?content_id=c_e2e&product_id=p_e2e&platform=instagram&affiliate_network=myntra`);
     assert.equal(summaryRes.status, 200);
     const summaryData = await summaryRes.json();
     assert.ok(summaryData.revenue.totalCommission >= 29.8);
